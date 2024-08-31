@@ -1,0 +1,80 @@
+﻿<Button @onclick="OnShowModal" Type="ButtonType.Button" Color="ButtonColor.Primary">Add Item</Button>
+
+<Modal @ref="modal" Title="Edit" UseStaticBackdrop="true" CloseOnEscape="false" IsVerticallyCentered="true">
+<BodyTemplate>
+<EditForm method="post" Model="Item" OnValidSubmit="OnValidSubmitAsync" FormName="createItem">
+<DataAnnotationsValidator />
+@if (Item.Id > 0)
+{
+<input type="hidden" value="@Item.Id" />
+}
+<div class="form-floating mb-3">
+<InputText id="name" @bind-Value="Item.Name" class="form-control" placeholder="Item Name" />
+<label for="name" class="form-label">Item</label>
+<small><ValidationMessage For="() => Item.Name" class="text-danger" /></small>
+</div>
+<div class="form-floating mb-3">
+<InputNumber id="quantity" @bind-Value="Item.Quantity" class="form-control" placeholder="Quantity" />
+<label for="quantity" class="form-label">Quantity</label>
+<small><ValidationMessage For="() => Item.Quantity" class="text-danger" /></small>
+</div>
+@if (Item.Project is not null)
+{
+if (Item.Project.Phase.Equals(SD.Phase_Cost))
+{
+<div class="form-floating mb-3">
+<InputNumber id="Cost" @bind-Value="Item.Cost" class="form-control" placeholder="Cost" />
+<label for="Cost" class="form-label">Cost</label>
+<small><ValidationMessage For="() => Item.Cost" class="text-danger" /></small>
+</div>
+}
+else if (Item.Project.Phase.Equals(SD.Phase_Price))
+{
+<div class="form-floating mb-3">
+<InputNumber id="Price" @bind-Value="Item.Price" class="form-control" placeholder="Price" />
+<label for="Price" class="form-label">Price</label>
+<small><ValidationMessage For="() => Item.Price" class="text-danger" /></small>
+</div>
+}
+}
+<Button Type="ButtonType.Submit" Color="ButtonColor.Primary">@(Item.Id > 0 ? "Add" : "Update")</Button>
+</EditForm>
+</BodyTemplate>
+<FooterTemplate>
+<Button Color="ButtonColor.Secondary" @onclick="OnHideModal">Close</Button>
+</FooterTemplate>
+</Modal>
+
+@code {
+private Modal modal = default!;
+
+[SupplyParameterFromForm]
+private ItemM Item { get; set; } = new();
+
+[Parameter]
+public ItemM SelectedItem { get; set; } = default!;
+
+[Parameter]
+public EventCallback<ItemM> EventCallBack { get; set; }
+
+protected override void OnParametersSet()
+{
+if (SelectedItem is not null)
+{
+Item = SelectedItem;
+}
+else
+{
+Item = new();
+}
+}
+
+private async Task OnValidSubmitAsync()
+{
+await EventCallBack.InvokeAsync(Item);
+await OnHideModal();
+}
+
+private async Task OnShowModal() => await modal.ShowAsync();
+private async Task OnHideModal() => await modal.HideAsync();
+}

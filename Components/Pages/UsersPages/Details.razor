@@ -1,0 +1,171 @@
+﻿@page "/admin/user"
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Identity
+
+@rendermode InteractiveServer
+
+@inject NavigationManager NavManager
+@inject UserManager<ApplicationUser> _userManager;
+
+@attribute [Authorize(Roles = SD.Role_Admin)]
+
+<PageTitle>Users Management</PageTitle>
+<br />
+<h2 class="border-bottom">USER MANAGEMENT</h2>
+<div class="mb-2">
+    <Button Type="ButtonType.Link" To="" Color="ButtonColor.Warning">Edit</Button>
+    <ActionConfirmation DeleteCallBack="DeleteUser"
+                        DialogTitle="Are you sure you want to delete this User?"
+                        DialogMessage1="Do you want to proceed?">
+    </ActionConfirmation>
+    <ActionConfirmation DeleteCallBack="UnLockUser" Disable="User.LockoutEnd > DateTime.Now"
+                        Action="Unlock" ButtonColor="ButtonColor.Success"
+                        DialogTitle="Are you sure you want to unlock this User?"
+                        DialogMessage1="Do you want to proceed?">
+    </ActionConfirmation>
+    <div class="mx-1"></div>
+    <div class="input-group">
+        <ActionConfirmation DeleteCallBack="LockUser"
+                            Action="Lockout" ButtonColor="ButtonColor.Danger"
+                            DialogTitle="Are you sure you want to lockout this User?"
+                            DialogMessage1="Do you want to proceed?">
+        </ActionConfirmation>
+        <InputSelect @bind-Value="lockoutPeriod" class="form-control">
+            @foreach (var period in Enum.GetValues(typeof(LockoutPeriod)).Cast<LockoutPeriod>())
+            {
+                <option value="@period">@period</option>
+            }
+        </InputSelect>
+    </div>
+</div>
+<div class="row">
+    <div class="col-6">
+        <Card>
+            <CardBody>
+                <CardTitle>Information</CardTitle>
+                <CardText>Name: @($"{User.FirstName} {User.LastName}")</CardText>
+                <CardText>Email: @User.Email</CardText>
+                <CardText>Role: @User.Role</CardText>
+                <CardText>Last Login: @User.LastLogin</CardText>
+                <CardText>Created Date: @User.CreatedAt</CardText>
+            </CardBody>
+        </Card>
+    </div>
+    <div class="col-6">
+        <Card>
+            <CardBody>
+                <CardTitle>Information</CardTitle>
+                <CardText>Name: @($"{User.FirstName} {User.LastName}")</CardText>
+                <CardText>Email: @User.Email</CardText>
+                <CardText>Role: @User.Role</CardText>
+                <CardText>Last Login: @User.LastLogin</CardText>
+                <CardText>Created Date: @User.CreatedAt</CardText>
+            </CardBody>
+        </Card>
+    </div>
+</div>
+<br />
+<div class="row">
+    <h2>Projects</h2>
+</div>
+
+@code {
+    [SupplyParameterFromQuery]
+    public string Id { get; set; }
+
+    private ApplicationUser User { get; set; }
+    private LockoutPeriod lockoutPeriod = LockoutPeriod.HalfHour;
+
+    // Define the LockoutPeriod enum
+    public enum LockoutPeriod
+    {
+        FiveMinutes,
+        HalfHour,
+        OneHour,
+        OneDay,
+        OneWeek,
+        OneMonth
+    }
+
+    protected override void OnParametersSet()
+    {
+        User = _userManager.Users.FirstOrDefault(p => p.Id.Equals(Id));
+    }
+
+    // Method to lock selected users by setting their lockout end date to 5 minutes from now
+    private async Task LockUser()
+    {
+        DateTime lockoutEndDate = DateTime.Now;
+
+        switch (lockoutPeriod)
+        {
+            case LockoutPeriod.FiveMinutes:
+                lockoutEndDate = lockoutEndDate.AddMinutes(5);
+                break;
+            case LockoutPeriod.HalfHour:
+                lockoutEndDate = lockoutEndDate.AddMinutes(30);
+                break;
+            case LockoutPeriod.OneHour:
+                lockoutEndDate = lockoutEndDate.AddHours(1);
+                break;
+            case LockoutPeriod.OneDay:
+                lockoutEndDate = lockoutEndDate.AddDays(1);
+                break;
+            case LockoutPeriod.OneWeek:
+                lockoutEndDate = lockoutEndDate.AddDays(7);
+                break;
+            case LockoutPeriod.OneMonth:
+                lockoutEndDate = lockoutEndDate.AddDays(30);
+                break;
+        }
+
+        await _userManager.SetLockoutEndDateAsync(User, lockoutEndDate);
+    }
+
+    // Method to unlock selected users by setting their lockout end date to now
+    private async Task DeleteUser()
+    {
+        var res = await _userManager.DeleteAsync(User);
+    }
+
+    // Method to unlock selected users by setting their lockout end date to now
+    private async Task UnLockUser()
+    {
+    }
+
+    private string TimeSinceDate(DateTime? date)
+    {
+        string text = "";
+
+        // Calculate the time difference from the provided date
+        if (date is not null)
+        {
+            TimeSpan timeSpan = DateTime.Now - (DateTime)date;
+            if (timeSpan.TotalMinutes < 1)
+            {
+                text = "just now";
+            }
+            else if (timeSpan.TotalMinutes < 60)
+            {
+                text = $"{(int)timeSpan.TotalMinutes} mins ago";
+            }
+            else if (timeSpan.TotalHours < 24)
+            {
+                text = $"{(int)timeSpan.TotalHours} hours ago";
+            }
+            else if (timeSpan.TotalDays < 30)
+            {
+                text = $"{(int)timeSpan.TotalDays} days ago";
+            }
+            else if (timeSpan.TotalDays < 365)
+            {
+                text = $"{(int)(timeSpan.TotalDays / 30)} months ago";
+            }
+            else
+            {
+                text = $"{(int)(timeSpan.TotalDays / 365)} years ago";
+            }
+        }
+        return text;
+    }
+}
