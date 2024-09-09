@@ -1,0 +1,57 @@
+﻿@using System.ComponentModel.DataAnnotations
+
+<Button @onclick="OnShowModal" Color="ButtonColor.Danger" Class="btn-header-sm me-2">
+    <Icon Name="IconName.LockFill" />
+    Lock
+</Button>
+<EditForm method="post" Model="Input" OnValidSubmit="OnValidSubmitAsync">
+    <DataAnnotationsValidator />
+    <Modal @ref="modal" Title="Lockout User" IsScrollable="true" UseStaticBackdrop="true" IsVerticallyCentered="true" Fullscreen="ModalFullscreen.SmallDown">
+        <BodyTemplate>
+            <div class="form-floating">
+                <InputSelect class="form-select" @bind-Value="Input.Period">
+                    <option selected disabled>Select Period</option>
+                    <option value="@SD.LockoutPeriod_FiveMinutes">@SD.LockoutPeriod_FiveMinutes</option>
+                    <option value="@SD.LockoutPeriod_HalfHour">@SD.LockoutPeriod_HalfHour</option>
+                    <option value="@SD.LockoutPeriod_OneHour">@SD.LockoutPeriod_OneHour</option>
+                    <option value="@SD.LockoutPeriod_OneDay">@SD.LockoutPeriod_OneDay</option>
+                    <option value="@SD.LockoutPeriod_OneWeek">@SD.LockoutPeriod_OneWeek</option>
+                    <option value="@SD.LockoutPeriod_OneMonth">@SD.LockoutPeriod_OneMonth</option>
+                    <option value="@SD.LockoutPeriod_Forever">@SD.LockoutPeriod_Forever</option>
+                </InputSelect>
+                <label class="form-label">Period</label>
+                <small><ValidationMessage For="() => Input.Period" class="text-danger" /></small>
+            </div>
+        </BodyTemplate>
+        <FooterTemplate>
+            <Button Type="ButtonType.Submit" Color="ButtonColor.Primary" Class="btn-action">Confirm</Button>
+            <div class="flex-grow-1" />
+            <Button @onclick="OnHideModal" Color="ButtonColor.Secondary" Class="btn-action">Cancel</Button>
+        </FooterTemplate>
+    </Modal>
+</EditForm>
+
+@code {
+    private Modal modal = default!;
+
+    [SupplyParameterFromForm]
+    private InputModel Input { get; set; } = new();
+
+    [Parameter]
+    public EventCallback<string> OnPush { get; set; }
+
+    private async Task OnValidSubmitAsync()
+    {
+        await OnPush.InvokeAsync(Input.Period);
+        await OnHideModal();
+    }
+
+    private async Task OnShowModal() => await modal.ShowAsync();
+    private async Task OnHideModal() => await modal.HideAsync();
+
+    private sealed class InputModel
+    {
+        [Required]
+        public string Period { get; set; }
+    }
+}

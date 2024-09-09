@@ -1,0 +1,278 @@
+﻿@page "/management/user"
+
+@rendermode InteractiveServer
+
+@inject IUserRepository UserRepo
+@inject UserManager<ApplicationUser> UserManager
+@inject NavigationManager NavManager
+
+@attribute [Authorize(Roles = SD.Role_Admin)]
+
+<PageTitle>User Details - Zing</PageTitle>
+
+@if (User is null)
+{
+    <div class="d-flex flex-column justify-content-center align-items-center h-100">
+        <Spinner Type="SpinnerType.Dots" Color="SpinnerColor.Primary" Size="SpinnerSize.Large" />
+    </div>
+}
+else
+{
+    <div class="row">
+        <div class="col">
+            <HeadingTitle Title="User Details"></HeadingTitle>
+        </div>
+        <div class="col-auto align-content-center">
+            <div class="d-flex">
+                @if (!User.Projects.Any())
+                {
+                    <ActionConfirmation OnEventCB="Delete"
+                                        IconName="bi-trash-fill"
+                                        ButtonClass="btn-header-sm mx-2"
+                                        DialogTitle="Confirm Action"
+                                        DialogMessage1="Are you sure you want to delete this user?"
+                                        DialogMessage2="Please confirm to proceed.">
+                    </ActionConfirmation>
+                }
+                @if (User.LockoutEnd > DateTime.Now)
+                {
+                    <ActionConfirmation OnEventCB="() => Lockout(string.Empty)"
+                                        Action="Unlock"
+                                        IconName="bi-unlock-fill"
+                                        ButtonClass="btn-header-sm me-2"
+                                        ButtonColor="ButtonColor.Success"
+                                        DialogTitle="Confirm Action"
+                                        DialogMessage1="Are you sure you want to unlock this user?"
+                                        DialogMessage2="Please confirm to proceed.">
+                    </ActionConfirmation>
+                }
+                else
+                {
+                    <UpsertLockout OnPush="Lockout"></UpsertLockout>
+                }
+                <UpsertUser Data="User" OnPush="UpdateUser"></UpsertUser>
+            </div>
+            <br />
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-6">
+            <Card Class="shadow-sm">
+                <CardHeader>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <CardTitle Class="fw-bold m-0">INFORMATION</CardTitle>
+                        @if (User is not null && User.LockoutEnd > DateTime.Now)
+                        {
+                            <Badge Color="BadgeColor.Danger">Suspended</Badge>
+                        }
+                    </div>
+                </CardHeader>
+                <CardBody>
+                    <div class="row">
+                        <div class="col-6 mb-3">
+                            <DetailCard Title="Name" Detail="@($"{User.FirstName} {User.LastName}")"></DetailCard>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <DetailCard Title="Role" Detail="@User.Roles.FirstOrDefault()"></DetailCard>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-6 mb-3">
+                            <DetailCard Title="Email" Detail="@User.Email"></DetailCard>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <DetailCard Title="Phone Namber" Detail="@User.PhoneNumber"></DetailCard>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-6 mb-3">
+                            <DetailCard Title="Last Login" Detail="@User.LastLogin.ToString()"></DetailCard>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <DetailCard Title="Time Created" Detail="@User.TimeCreated.ToString()"></DetailCard>
+                        </div>
+                    </div>
+                    <div class="d-md-flex">
+                        <div class="w-100" />
+                        <div class="mx-2" />
+                        <DetailCard Title="Lockout End" Detail="@User.LockoutEnd.ToString()"></DetailCard>
+                    </div>
+                </CardBody>
+            </Card>
+        </div>
+        <div class="col-6">
+            <Card Class="shadow-sm h-100">
+                <CardHeader>
+                    <CardTitle Class="fw-bold m-0">PERFORMANCE</CardTitle>
+                </CardHeader>
+                <CardBody>
+                    <Callout Color="CalloutColor.Warning" Heading="Notes">
+                        <ul>
+                            <li>Performance records</li>
+                            <li>Charts and statics</li>
+                        </ul>
+                    </Callout>
+
+                </CardBody>
+            </Card>
+        </div>
+    </div>
+    <br />
+    <Card Class="shadow-sm">
+        <CardHeader>
+            <CardTitle Class="fw-bold m-0">PROJECTS</CardTitle>
+        </CardHeader>
+        <CardBody>
+            <GridProjects Data="User.Projects.ToList()"></GridProjects>
+        </CardBody>
+    </Card>
+}
+
+@code {
+    [Inject] protected ToastService ToastService { get; set; } = default!;
+
+    [SupplyParameterFromQuery]
+    public string Id { get; set; }
+
+    private ApplicationUser User { get; set; } = default!;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        if (string.IsNullOrEmpty(this.Id))
+        {
+            NavManager.NavigateTo("management/users");
+        }
+        else
+        {
+            User = await UserRepo.GetAsync(filter: p => p.Id.Equals(this.Id), includeProperties: "Projects.Client,Projects.OperationUser");
+
+            if (User is not null)
+            {
+                User.Roles = (await UserManager.GetRolesAsync(User)).ToList();
+            }
+            else
+            {
+                NavManager.NavigateTo("notfound");
+            }
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task UpdateUser(UserUpsertDTO model)
+    {
+        try
+        {
+            var user = UserManager.Users.FirstOrDefault(p => p.Id.Equals(this.Id));
+
+            if (!User.FirstName.Equals(model.FirstName) || !User.LastName.Equals(model.LastName))
+            {
+                User.FirstName = model.FirstName;
+                User.LastName = model.LastName;
+                await UserRepo.UpdateAsync(User);
+            }
+
+            if (!user.Email.Equals(model.Email))
+            {
+                await UserManager.SetEmailAsync(user, model.Email);
+                await UserManager.SetUserNameAsync(user, model.Email);
+                User.Email = model.Email;
+            }
+
+            if ((user.PhoneNumber is null && model.PhoneNumber is not null) || (user.PhoneNumber is not null && !user.PhoneNumber.Equals(model.PhoneNumber)))
+            {
+                await UserManager.SetPhoneNumberAsync(user, model.PhoneNumber);
+                User.PhoneNumber = model.PhoneNumber;
+            }
+
+            foreach (var role in model.Roles)
+            {
+                bool isSelected = role.Selected;
+                bool isInUserRoles = User.Roles.Contains(role.Name);
+
+                if (isSelected && !isInUserRoles)
+                {
+                    await UserManager.AddToRoleAsync(user, role.Name);
+                }
+                else if (!isSelected && isInUserRoles)
+                {
+                    await UserManager.RemoveFromRoleAsync(user, role.Name);
+                }
+            }
+
+            ToastService.Notify(new(ToastType.Success, "Action Successful", $"User details was updated successfully."));
+        }
+        catch (Exception ex)
+        {
+            // handle exception
+            Console.WriteLine($"An error occurred: {ex.Message}");
+            ToastService.Notify(new(ToastType.Danger, $"Error: {ex.Message}."));
+        }
+    }
+
+    private async Task Lockout(string LockoutPeriod)
+    {
+        try
+        {
+            var user = UserManager.Users.FirstOrDefault(p => p.Id.Equals(this.Id));
+
+            if (string.IsNullOrEmpty(LockoutPeriod))
+            {
+                await UserManager.SetLockoutEndDateAsync(user, null);
+                User.LockoutEnd = null;
+                ToastService.Notify(new(ToastType.Success, "Action Successful", $"User unlocked Successfully!"));
+            }
+            else
+            {
+                var LockoutDete = DateTime.Now;
+
+                switch (LockoutPeriod)
+                {
+                    case SD.LockoutPeriod_FiveMinutes:
+                        LockoutDete = LockoutDete.AddMinutes(5);
+                        break;
+                    case SD.LockoutPeriod_HalfHour:
+                        LockoutDete = LockoutDete.AddMinutes(30);
+                        break;
+                    case SD.LockoutPeriod_OneHour:
+                        LockoutDete = LockoutDete.AddHours(1);
+                        break;
+                    case SD.LockoutPeriod_OneDay:
+                        LockoutDete = LockoutDete.AddDays(1);
+                        break;
+                    case SD.LockoutPeriod_OneWeek:
+                        LockoutDete = LockoutDete.AddDays(7);
+                        break;
+                    case SD.LockoutPeriod_OneMonth:
+                        LockoutDete = LockoutDete.AddDays(30);
+                        break;
+                    case SD.LockoutPeriod_Forever:
+                        LockoutDete = DateTime.MaxValue;
+                        break;
+                    default:
+                        LockoutDete = DateTime.Now;
+                        break;
+                }
+
+                await UserManager.SetLockoutEndDateAsync(user, LockoutDete);
+                User.LockoutEnd = LockoutDete;
+                ToastService.Notify(new(ToastType.Success, "Action Successful", $"User is locked until {LockoutDete}"));
+            }
+        }
+        catch (Exception ex)
+        {
+            // handle exception
+            Console.WriteLine($"An error occurred: {ex.Message}");
+            ToastService.Notify(new(ToastType.Danger, $"Error: {ex.Message}."));
+        }
+    }
+
+    private async Task Delete()
+    {
+        await UserManager.DeleteAsync(User);
+        NavManager.NavigateTo("management/users");
+    }
+}

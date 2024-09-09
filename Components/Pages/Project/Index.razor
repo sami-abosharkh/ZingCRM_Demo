@@ -1,0 +1,179 @@
+﻿@page "/projects"
+
+@rendermode InteractiveServer
+
+@inject IProjectRepository ProjectRepo
+
+@attribute [StreamRendering]
+@attribute [Authorize]
+
+<PageTitle>Projects - Zing</PageTitle>
+
+<div class="row">
+    <div class="col">
+        <HeadingTitle Title="Projects"></HeadingTitle>
+    </div>
+    <div class="col-auto align-content-center">
+        <ProjectUpsertModel OnPush="CreateProject"></ProjectUpsertModel>
+        <br />
+    </div>
+</div>
+
+@if (Projects is null)
+{
+    <div class="d-flex flex-column justify-content-center align-items-center h-100">
+        <Spinner Type="SpinnerType.Dots" Color="SpinnerColor.Primary" Size="SpinnerSize.Large" />
+    </div>
+}
+else
+{
+    <Tabs EnableFadeEffect="true" NavStyle="NavStyle.Underline">
+        <Tab Title="@($"All ({Projects.Count})")" Active="true">
+            <Content>
+                <br />
+                <GridProjects Data="Projects"></GridProjects>
+            </Content>
+        </Tab>
+        <Tab Title="@($"Pending ({ProjectsPending.Count})")" Disabled="!ProjectsPending.Any()">
+            <Content>
+                <br />
+                <GridProjects Data="ProjectsPending"></GridProjects>
+            </Content>
+        </Tab>
+        <Tab Title="@($"Waiting ({ProjectsWaiting.Count})")" Disabled="!ProjectsWaiting.Any()">
+            <Content>
+                <br />
+                <GridProjects Data="ProjectsWaiting"></GridProjects>
+            </Content>
+        </Tab>
+        <Tab Title="@($"Approved ({ProjectsApproved.Count})")" Disabled="!ProjectsApproved.Any()">
+            <Content>
+                <br />
+                <GridProjects Data="ProjectsApproved"></GridProjects>
+            </Content>
+        </Tab>
+        <Tab Title="@($"Rejected ({ProjectsRejected.Count})")" Disabled="!ProjectsRejected.Any()">
+            <Content>
+                <br />
+                <GridProjects Data="ProjectsRejected"></GridProjects>
+            </Content>
+        </Tab>
+        <Tab Title="@($"Completed ({ProjectsCompleted.Count})")" Disabled="!ProjectsCompleted.Any()">
+            <Content>
+                <br />
+                <GridProjects Data="ProjectsCompleted"></GridProjects>
+            </Content>
+        </Tab>
+    </Tabs>
+}
+
+@code {
+    [Inject] protected ToastService ToastService { get; set; } = default!;
+
+    // Cascading parameter to get the current authentication state
+    [CascadingParameter]
+    private Task<AuthenticationState> authenticationState { get; set; }
+
+    private List<Project> Projects = default!;
+    private List<Project> ProjectsPending = new();
+    private List<Project> ProjectsApproved = new();
+    private List<Project> ProjectsRejected = new();
+    private List<Project> ProjectsWaiting = new();
+    private List<Project> ProjectsCompleted = new();
+
+    private List<ApplicationUser> OperationUsers { get; set; } = new();
+    private List<Client> Clients { get; set; } = new();
+
+    private string UserId { get; set; }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        await GetProjects();
+        StateHasChanged();
+    }
+
+    private async Task GetProjects()
+    {
+        try
+        {
+            var authState = await authenticationState;
+            var roles = authState.User.Claims.Where(c => c.Type == ClaimTypes.Role).Select(c => c.Value).ToList();
+            UserId = authState.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (roles.Contains(SD.Role_ClientService))
+            {
+                Projects = await ProjectRepo.GetAllAsync(
+                    filter: f => f.UserId.Equals(UserId),
+                    orderBy: p => p.Number,
+                    ascending: false,
+                    includeProperties: "User,OperationUser,Client"); // call a service or an API to pull the Projects
+            }
+            else if (roles.Contains(SD.Role_OperationManager))
+            {
+                Projects = await ProjectRepo.GetAllAsync(
+                    filter: f => f.OperationUserId.Equals(UserId),
+                    orderBy: p => p.Number,
+                    ascending: false,
+                    includeProperties: "User,OperationUser,Client"); // call a service or an API to pull the Projects
+            }
+            else
+            {
+                Projects = await ProjectRepo.GetAllAsync(
+                    orderBy: p => p.Number,
+                    ascending: false,
+                    includeProperties: "User,OperationUser,Client"); // call a service or an API to pull the Projects
+            }
+        }
+        catch
+        {
+            // handle exception
+        }
+        finally
+        {
+            if (Projects is not null)
+            {
+                ProjectsPending = Projects.Where(f => f.Status.Equals(SD.Status_Pending)).ToList();
+                ProjectsApproved = Projects.Where(f => f.Status.Equals(SD.Status_Approved)).ToList();
+                ProjectsRejected = Projects.Where(f => f.Status.Equals(SD.Status_Rejected)).ToList();
+                ProjectsCompleted = Projects.Where(f => f.Status.Equals(SD.Status_Completed)).ToList();
+                ProjectsWaiting = Projects.Where(f => f.Status.Equals(SD.Status_Waiting)).ToList();
+            }
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task CreateProject(ProjectUpsertDTO model)
+    {
+        try
+        {
+            Project project = new()
+                {
+                    UserId = UserId,
+                    Number = await ProjectRepo.GetTotalCountAsync() + 1,
+                    Name = model.Name,
+                    ClientId = model.ClientId,
+                    OperationUserId = model.OperationUserId,
+                    Status = model.Status,
+                    Phase = model.Phase,
+                    Date = model.Date,
+                    DueDate = model.DueDate,
+                    InvoiceDate = model.InvoiceDate,
+                    Version = model.Version
+                };
+
+            await ProjectRepo.CreateAsync(project);
+            ToastService.Notify(new(ToastType.Success, "Project Created", $"The project '{project.Name}' has been created successfully."));
+
+            await GetProjects();
+        }
+        catch (Exception ex)
+        {
+            // handle exception
+            Console.WriteLine($"An error occurred: {ex.Message}");
+            ToastService.Notify(new(ToastType.Danger, $"Error: {ex.Message}."));
+        }
+    }
+}

@@ -1,0 +1,525 @@
+﻿@page "/project"
+
+@rendermode InteractiveServer
+
+@inject IItemRepository ItemRepo
+@inject IQuotationItemRepository QItemRepo
+@inject IProjectRepository ProjectRepo
+@inject IPurchaseRequisitionRepository PurchaseRequisitionRepo
+@inject NavigationManager NavManager
+
+@attribute [Authorize]
+
+<PageTitle>Project Details - Zing</PageTitle>
+
+@if (Project is null)
+{
+    <div class="d-flex flex-column justify-content-center align-items-center h-100">
+        <Spinner Type="SpinnerType.Dots" Color="SpinnerColor.Primary" Size="SpinnerSize.Large" />
+    </div>
+}
+else
+{
+    <div class="row">
+        <div class="col">
+            <HeadingTitle Title="PROJECT DETAILS"></HeadingTitle>
+        </div>
+        <div class="col-auto align-content-center">
+            <div class="d-flex">
+                @if (Project.Phase.Equals(SD.GetPhaseInfo(SD.PhasesEnum.Initiation)))
+                {
+                    <ItemManagerModel Data="Project.QuotationItems.ToList()" OnPush="UpsertItems"></ItemManagerModel>
+                    @if (Project.QuotationItems is not null && Project.QuotationItems.Any())
+                    {
+                        <ActionConfirmation OnEventCB="() => UpdateAsync(SD.PhasesEnum.CostEstimation)"
+                                            Action="Confirm"
+                                            IconName="bi-chevron-right"
+                                            ButtonColor="ButtonColor.Primary"
+                                            ButtonClass="btn-header-lg ms-2"
+                                            DialogTitle="Confirmation Required"
+                                            DialogMessage1="Are you sure you want to confirm the project details?"
+                                            DialogMessage2="Please ensure all information is accurate before proceeding.">
+                        </ActionConfirmation>
+                    }
+                }
+                else if (Project.Phase.Equals(SD.GetPhaseInfo(SD.PhasesEnum.CostEstimation)))
+                {
+                    <ActionConfirmation OnEventCB="() => UpdateAsync(SD.PhasesEnum.Initiation)"
+                                        Action="Back"
+                                        IconName="bi-chevron-left"
+                                        ButtonColor="ButtonColor.Secondary"
+                                        ButtonClass="btn-header-sm"
+                                        DialogTitle="Confirmation Required"
+                                        DialogMessage1="Do you want to revert to an earlier point in the project?"
+                                        DialogMessage2="This will remove all changes made since then. Are you sure you want to continue?">
+                    </ActionConfirmation>
+                    <CosterModel Data="Project.QuotationItems.ToList()" OnCostEstimatedCB="UpsertCost"></CosterModel>
+                    @if (Project.QuotationItems.All(item => item.Cost > 0))
+                    {
+                        <ActionConfirmation OnEventCB="() => UpdateAsync(SD.PhasesEnum.Quotation)"
+                                            Action="Confirm"
+                                            IconName="bi-chevron-right"
+                                            ButtonColor="ButtonColor.Primary"
+                                            ButtonClass="btn-header-lg"
+                                            DialogTitle="Save Changes"
+                                            DialogMessage1="Do you want to save your changes?"
+                                            DialogMessage2="Do you want to proceed?">
+                        </ActionConfirmation>
+                    }
+                }
+                else if (Project.Phase.Equals(SD.GetPhaseInfo(SD.PhasesEnum.Quotation)))
+                {
+                    <ActionConfirmation OnEventCB="() => UpdateAsync(SD.PhasesEnum.CostEstimation)"
+                                        Action="Back"
+                                        IconName="bi-chevron-left"
+                                        ButtonColor="ButtonColor.Secondary"
+                                        ButtonClass="btn-header-sm"
+                                        DialogTitle="Confirmation Required"
+                                        DialogMessage1="Do you want to revert to an earlier point in the project?"
+                                        DialogMessage2="This will remove all changes made since then. Are you sure you want to continue?">
+                    </ActionConfirmation>
+                    <PricerModel Data="Project.QuotationItems.ToList()" OnPriceQuotationCB="UpsertPrice"></PricerModel>
+                    @if (Project.QuotationItems.All(item => item.Price > 0))
+                    {
+                        <ActionConfirmation OnEventCB="() => UpdateAsync(SD.PhasesEnum.Confirmation)"
+                                            Action="Confirm"
+                                            IconName="bi-chevron-right"
+                                            ButtonColor="ButtonColor.Primary"
+                                            ButtonClass="btn-header-lg"
+                                            DialogTitle="Save Changes"
+                                            DialogMessage1="Do you want to save your changes?"
+                                            DialogMessage2="Do you want to proceed?">
+                        </ActionConfirmation>
+                    }
+                }
+                else if (Project.Phase.Equals(SD.GetPhaseInfo(SD.PhasesEnum.Confirmation)))
+                {
+                    <ActionConfirmation OnEventCB="() => UpdateAsync(SD.PhasesEnum.Quotation)"
+                                        Action="New Version"
+                                        IconName="bi-chevron-left"
+                                        ButtonColor="ButtonColor.Secondary"
+                                        ButtonClass="btn-header-sm"
+                                        DialogTitle="Confirmation Required"
+                                        DialogMessage1="Do you want to revert to an earlier point in the project?"
+                                        DialogMessage2="This will remove all changes made since then. Are you sure you want to continue?">
+                    </ActionConfirmation>
+                    <QuotationExport></QuotationExport>
+                    <ProjectConfirmationModel Data="Project" OnConfirmCB="() => UpdateAsync(SD.PhasesEnum.PurchaseRequisition)"></ProjectConfirmationModel>
+                }
+                else if (Project.Phase.Equals(SD.GetPhaseInfo(SD.PhasesEnum.PurchaseRequisition)))
+                {
+                    <PurchaseRequisitionModel Data="Project.QuotationItems.ToList()" PreviousPR="Project.PurchaseRequisitions.ToList()" OnPushCB="UpsertPR" />
+                    @if (Project.PurchaseRequisitions.Count > PurchaseRequisitionTotal)
+                    {
+                        <ActionConfirmation OnEventCB="() => UpdateAsync(SD.PhasesEnum.PurchaseRequisition)"
+                                            Action="Confirm"
+                                            IconName="bi-chevron-right"
+                                            ButtonColor="ButtonColor.Primary"
+                                            ButtonClass="btn-header-lg ms-2"
+                                            DialogTitle="Confirmation Required"
+                                            DialogMessage1="Are you sure you want to confirm the project details?"
+                                            DialogMessage2="Please ensure all information is accurate before proceeding.">
+                        </ActionConfirmation>
+                    }
+
+                }
+            </div>
+            <br />
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-xl-5">
+            <Card Class="shadow-sm">
+                <CardHeader>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <CardTitle Class="fw-bold user-select-none m-0">INFORMATION</CardTitle>
+                        <div class="user-select-none">
+                            @if (Project.Status.Equals(SD.Status_Pending) || Project.Status.Equals(SD.Status_Waiting))
+                            {
+                                <Badge Color="BadgeColor.Warning">@Project.Status</Badge>
+                            }
+                            else if (Project.Status.Equals(SD.Status_Completed))
+                            {
+                                <Badge Color="BadgeColor.Warning">@Project.Status</Badge>
+                            }
+                            else
+                            {
+                                <Badge Color="@(Project.Status.Equals(SD.Status_Approved) ? BadgeColor.Success : BadgeColor.Danger)">@Project.Status</Badge>
+                            }
+                            <Badge Color="BadgeColor.Warning" Class="ms-2">@($"V{Project.Version.ToString()}")</Badge>
+                        </div>
+                    </div>
+                </CardHeader>
+                <CardBody>
+                    <div class="row">
+                        <div class="col-auto">
+                            <DetailCard Title="AC #" Detail="@Project.Number.ToString()"></DetailCard>
+                        </div>
+                        <div class="col">
+                            <DetailCard Title="Client" Detail="@Project.Client.Name"></DetailCard>
+                        </div>
+                        <div class="col">
+                            <DetailCard Title="Name" Detail="@Project.Name"></DetailCard>
+                        </div>
+                    </div>
+                    <Collapse @ref="collapse">
+                        <div class="row">
+                            <div class="col-6">
+                                <DetailCard Title="Version" Detail="@Project.Version.ToString()" TopMargin="true"></DetailCard>
+                            </div>
+                            <div class="col-6">
+                                <DetailCard Title="PO Number" Detail="@Project.PONumber" TopMargin="true"></DetailCard>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-6">
+                                <DetailCard Title="Due Date" Detail="@Project.DueDate.ToString("dd/MM/yy")" TopMargin="true"></DetailCard>
+                            </div>
+                            <div class="col-6">
+                                <DetailCard Title="Invoice Date" Detail="@Project.InvoiceDate.ToString("dd/MM/yy")" TopMargin="true"></DetailCard>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-6">
+                                <DetailCard Title="Client Service" Detail="@($"{Project.User.FirstName} {Project.User.LastName}")" TopMargin="true"></DetailCard>
+                            </div>
+                            <div class="col-6">
+                                <DetailCard Title="Operation" Detail="@($"{Project.OperationUser.FirstName} {Project.OperationUser.LastName}")" TopMargin="true"></DetailCard>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col">
+                                <DetailCard Title="Time Created" Detail="@Project.Date.ToString()" TopMargin="true"></DetailCard>
+                            </div>
+                        </div>
+                    </Collapse>
+
+                </CardBody>
+                <AuthorizeView Roles="@($"{SD.Role_Admin},{SD.Role_ClientService}")">
+                    <CardFooter>
+                        <div class="row">
+                            <div class="col d-flex">
+                                <ProjectUpsertModel Data="Project" OnPush="UpdateProject"></ProjectUpsertModel>
+                                <Dropdown Color="DropdownColor.Secondary" Disabled="false" Class="btn-action">
+                                    <DropdownToggleButton>Version</DropdownToggleButton>
+                                    <DropdownMenu>
+                                        <DropdownItem To="#" Type="DropdownItemType.Link">Action</DropdownItem>
+                                        <DropdownItem To="#" Type="DropdownItemType.Link">Another action</DropdownItem>
+                                        <DropdownItem To="#" Type="DropdownItemType.Link">Something else here</DropdownItem>
+                                    </DropdownMenu>
+                                </Dropdown>
+                            </div>
+                            <div class="col-auto text-end">
+                                @if (IsCollapse)
+                                {
+                                    <Tooltip Title="Hide" Placement="TooltipPlacement.Right"><Button Type="ButtonType.Button" Color="ButtonColor.Info" @onclick="ToggleContentAsync"><Icon Name="IconName.ArrowsCollapse" /></Button></Tooltip>
+
+                                }
+                                else
+                                {
+                                    <Tooltip Title="Show Info" Placement="TooltipPlacement.Right"><Button Type="ButtonType.Button" Color="ButtonColor.Info" @onclick="ToggleContentAsync"><Icon Name="IconName.ArrowsExpand" /></Button></Tooltip>
+                                }
+                            </div>
+                        </div>
+                    </CardFooter>
+                </AuthorizeView>
+            </Card>
+            <br />
+        </div>
+        <div class="col-xl-7">
+            <Card Class="shadow-sm">
+                <CardHeader>
+                    <CardTitle Class="fw-bold user-select-none m-0">WORKFLOW STATUS</CardTitle>
+                </CardHeader>
+                <CardBody Class="d-flex flex-column">
+                    <div class="d-md-flex breadcrumbs user-select-none">
+                        @foreach (var item in SD.PhaseDictionary)
+                        {
+                            <div class="breadcrumbs-item @(Project.Phase.Equals(item.Value) ? "is-active" : "")"><span>@item.Value</span></div>
+                        }
+                    </div>
+                </CardBody>
+                <CardFooter>
+                    <div class="flex-grow-1" />
+                    <ActionConfirmation OnEventCB="() => {}"
+                                        Action="Exception"
+                                        IconName="bi-cone-striped"
+                                        ButtonColor="ButtonColor.Warning"
+                                        Disable="true"
+                                        DialogTitle="Confirmation Required"
+                                        DialogMessage1="Are you sure you want to confirm the project details?"
+                                        DialogMessage2="Please ensure all information is accurate before proceeding.">
+                    </ActionConfirmation>
+                </CardFooter>
+            </Card>
+            <br />
+        </div>
+    </div>
+    <Card Class="shadow-sm">
+        <CardHeader>
+            <CardTitle Class="fw-bold user-select-none m-0">ITEMS</CardTitle>
+        </CardHeader>
+        <CardBody>
+            <QItemsPreviewer Data="Project.QuotationItems.ToList()"></QItemsPreviewer>
+        </CardBody>
+    </Card>
+    <br />
+    <Card Class="shadow-sm">
+        <CardHeader>
+            <CardTitle Class="fw-bold user-select-none m-0">PAYMENT REQUESTS</CardTitle>
+        </CardHeader>
+        <CardBody>
+            <GridPR Data="Project.PurchaseRequisitions.ToList()" OnPushCB="OnStatusPR" />
+        </CardBody>
+    </Card>
+}
+
+@code {
+    [Inject] protected ToastService ToastService { get; set; } = default!;
+
+    [SupplyParameterFromQuery]
+    public int Id { get; set; }
+
+    private Project Project { get; set; } = default!;
+
+    private int PurchaseRequisitionTotal { get; set; }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        if (this.Id > 0)
+        {
+            await GetProject();
+            int PurchaseRequisitionTotal = await PurchaseRequisitionRepo.GetTotalCountAsync(filter: p => p.ProjectId == Project.Id);
+        }
+        else
+        {
+            NavManager.NavigateTo("projects");
+        }
+    }
+
+    private async Task GetProject()
+    {
+        Project = await ProjectRepo.GetAsync(filter: x => x.Id == this.Id, includeProperties: "User,Client,OperationUser,QuotationItems.Item.Category,PurchaseRequisitions.RequisitionEntries");
+
+        if (Project is null)
+        {
+            NavManager.NavigateTo("notfound");
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task UpdateProject(ProjectUpsertDTO model)
+    {
+        try
+        {
+            Project.Name = model.Name;
+            Project.ClientId = model.ClientId;
+            Project.Client = model.Client;
+            Project.OperationUserId = model.OperationUserId;
+            Project.OperationUser = model.OperationUser;
+            Project.DueDate = model.DueDate;
+            Project.InvoiceDate = model.InvoiceDate;
+
+            await ProjectRepo.UpdateAsync(Project);
+
+            ToastService.Notify(new(ToastType.Success, "Action Successful", $"User details was updated successfully."));
+        }
+        catch (Exception ex)
+        {
+            // handle exception
+            Console.WriteLine($"An error occurred: {ex.Message}");
+            ToastService.Notify(new(ToastType.Danger, $"Error: {ex.Message}."));
+        }
+    }
+
+    private void UpsertItems(List<ItemUpsertDTO> models)
+    {
+        try
+        {
+            foreach (var item in models)
+            {
+                QuotationItem quotableItem = new()
+                    {
+                        Id = item.Id,
+                        ItemId = item.Reference.Id,
+                        Item = item.Reference,
+                        Quantity = item.Quantity.Value,
+                        Description = item.Description,
+                        ProjectId = Project.Id,
+                    };
+
+                if (quotableItem.Id > 0)
+                {
+
+                }
+                else
+                {
+                    Project.QuotationItems.Add(quotableItem);
+                }
+            }
+
+            ToastService.Notify(new(ToastType.Success, "Action Successful", "Items were inserted successfully."));
+        }
+        catch (Exception ex)
+        {
+            // handle exception
+            Console.WriteLine($"An error occurred: {ex.Message}");
+            ToastService.Notify(new(ToastType.Danger, $"Error: {ex.Message}."));
+        }
+    }
+
+    private void UpsertCost(List<ItemCostDTO> models)
+    {
+        try
+        {
+            foreach (var item in models)
+            {
+                QuotationItem Selected = Project.QuotationItems.FirstOrDefault(p => p.Id == item.Id);
+                Selected.Cost = item.Cost;
+            }
+
+            ToastService.Notify(new(ToastType.Success, "Action Successful", "Items Costs were inserted successfully."));
+        }
+        catch (Exception ex)
+        {
+            // handle exception
+            Console.WriteLine($"An error occurred: {ex.Message}");
+            ToastService.Notify(new(ToastType.Danger, $"Error: {ex.Message}."));
+        }
+    }
+
+    private void UpsertPrice(List<ItemPriceDTO> models)
+    {
+        try
+        {
+            foreach (var item in models)
+            {
+                QuotationItem Selected = Project.QuotationItems.FirstOrDefault(p => p.Id == item.Id);
+                Selected.Price = item.Price;
+            }
+
+            ToastService.Notify(new(ToastType.Success, "Action Successful", "Quotation was inserted successfully."));
+        }
+        catch (Exception ex)
+        {
+            // handle exception
+            Console.WriteLine($"An error occurred: {ex.Message}");
+            ToastService.Notify(new(ToastType.Danger, $"Error: {ex.Message}."));
+        }
+    }
+
+    private void UpsertPR(PurchaseRequisition model)
+    {
+        try
+        {
+            if (model.Id > 0)
+            {
+
+            }
+            else
+            {
+                model.Number = (Project.PurchaseRequisitions.Count > PurchaseRequisitionTotal ? Project.PurchaseRequisitions.Count : PurchaseRequisitionTotal) + 1;
+                model.ProjectId = Project.Id;
+
+                foreach (var item in model.RequisitionEntries)
+                {
+                    var cost = Project.QuotationItems.FirstOrDefault(p => p.Id == item.QuotedItemId)?.Cost ?? 0m; // Default to 0 if null
+                    model.RequestedAmount += cost * (decimal)item.Quantity;
+                }
+
+                Project.PurchaseRequisitions.Add(model);
+            }
+
+            ToastService.Notify(new(ToastType.Success, "Action Successful", $""));
+        }
+        catch (Exception ex)
+        {
+            // handle exception
+            Console.WriteLine($"An error occurred: {ex.Message}");
+            ToastService.Notify(new(ToastType.Danger, $"Error: {ex.Message}."));
+        }
+    }
+
+    private async Task OnStatusPR(PurchaseRequisition model)
+    {
+        model.Status = model.Status.Equals(SD.Status_Pending) ? SD.Status_Approved : SD.Status_Transferred;
+        await ProjectRepo.UpdateAsync(Project);
+    }
+
+    private async Task UpdateAsync(SD.PhasesEnum value)
+    {
+        string toastMsg = string.Empty;
+
+        switch (value)
+        {
+            case SD.PhasesEnum.Initiation:
+                Project.Phase = SD.GetPhaseInfo(SD.PhasesEnum.Initiation);
+                toastMsg = "Returned to Project Initiation.";
+                break;
+            case SD.PhasesEnum.CostEstimation:
+                toastMsg = (Project.Phase.Equals(SD.GetPhaseInfo(SD.PhasesEnum.Initiation))) ? "Project Details has been confirmed" : "Returned to Cost Estimation.";
+                Project.Phase = SD.GetPhaseInfo(SD.PhasesEnum.CostEstimation);
+                break;
+            case SD.PhasesEnum.Quotation:
+                toastMsg = (Project.Phase.Equals(SD.GetPhaseInfo(SD.PhasesEnum.CostEstimation))) ? "Cost Estimation has been confirmed" : "Returned to Price Quotation.";
+                Project.Phase = SD.GetPhaseInfo(SD.PhasesEnum.Quotation);
+                break;
+            case SD.PhasesEnum.Confirmation:
+                Project.Phase = SD.GetPhaseInfo(SD.PhasesEnum.Confirmation);
+                toastMsg = "Price Quotation has been confirmed";
+                break;
+            case SD.PhasesEnum.PurchaseRequisition:
+                if (Project.Status.Equals(SD.Status_Approved))
+                {
+                    Project.Phase = SD.GetPhaseInfo(SD.PhasesEnum.PurchaseRequisition);
+                    //toastMsg = "Payment request has been initiated successfully!";
+                }
+                else
+                {
+                    Project.Phase = SD.GetPhaseInfo(SD.PhasesEnum.Confirmation);
+                    toastMsg = $"Project is {Project.Status}!";
+                }
+                break;
+            case SD.PhasesEnum.Closure:
+                toastMsg = "";
+                Project.Phase = SD.GetPhaseInfo(SD.PhasesEnum.Closure);
+                Project.Status = SD.Status_Completed;
+                break;
+            default:
+                // Handle unknown phases or errors
+                toastMsg = "Unknown phase. Please check the phase selection.";
+                break;
+        }
+
+        try
+        {
+            await ProjectRepo.UpdateAsync(Project);
+            await GetProject();
+
+            if (!string.IsNullOrEmpty(toastMsg))
+            {
+                ToastService.Notify(new(ToastType.Success, "Action Successful", toastMsg));
+            }
+        }
+        catch (Exception ex)
+        {
+            // handle exception
+            Console.WriteLine($"An error occurred: {ex.Message}");
+            ToastService.Notify(new(ToastType.Danger, $"Error: {ex.Message}."));
+        }
+    }
+}
+
+@code {
+    private Collapse collapse = default!;
+    private bool IsCollapse = false;
+
+    private async Task ToggleContentAsync()
+    {
+        await collapse.ToggleAsync();
+        IsCollapse = !IsCollapse;
+    }
+}

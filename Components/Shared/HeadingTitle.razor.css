@@ -1,0 +1,28 @@
+﻿h1 {
+    position: relative;
+    padding: 0;
+    margin: 0;
+    font-family: "Raleway", sans-serif;
+    font-weight: 300;
+    font-size: 40px;
+    color: #080808;
+    -webkit-transition: all 0.4s ease 0s;
+    -o-transition: all 0.4s ease 0s;
+    transition: all 0.4s ease 0s;
+}
+
+.ten h1 {
+    font-size: 34px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+    .ten h1:before {
+        background-color: #f15b2a;
+        border-radius: 0.25rem;
+        content: '';
+        display: block;
+        height: 0.25rem;
+        width: 42px;
+        margin-bottom: 1.25rem;
+    }

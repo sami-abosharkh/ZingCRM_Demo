@@ -1,0 +1,96 @@
+﻿@using System.ComponentModel.DataAnnotations
+<Button @onclick="OnShowModal" Color="ButtonColor.Primary" Class="btn-header-lg ms-2">Confirm <Icon Name="IconName.ChevronRight" /></Button>
+
+<EditForm autocomplete="off" method="post" Model="Input" OnValidSubmit="OnValidSubmitAsync">
+    <Modal @ref="modal" Title="Project Confirmation" IsScrollable="true" UseStaticBackdrop="true" IsVerticallyCentered="true" Size="ModalSize.Regular" Fullscreen="ModalFullscreen.SmallDown">
+        <BodyTemplate>
+            <DataAnnotationsValidator />
+            <div class="form-floating mb-3">
+                <InputSelect class="form-select" @bind-Value="Input.Status">
+                    <option selected disabled>Select Status</option>
+                    <option>@SD.Status_Approved</option>
+                    <option>@SD.Status_Rejected</option>
+                    <option>@SD.Status_Waiting</option>
+                </InputSelect>
+                <label class="form-label">Confirmation Status</label>
+                <small><ValidationMessage For="() => Input.Status" class="text-danger" /></small>
+            </div>
+            <div class="form-floating mb-3">
+                <InputText @bind-Value="Input.PONumber" class="form-control" placeholder="" />
+                <label class="form-label">PO Number</label>
+                <small><ValidationMessage For="() => Input.PONumber" class="text-danger" /></small>
+            </div>
+            <div class="row">
+                <div class="col-sm-6">
+                    <div class="form-floating mb-3">
+                        <InputDate @bind-Value="Input.DueDate" class="form-control" />
+                        <label class="form-label">Due Date</label>
+                        <small><ValidationMessage For="() => Input.DueDate" class="text-danger" /></small>
+                    </div>
+                </div>
+                <div class="col-sm-6">
+                    <div class="form-floating">
+                        <InputDate @bind-Value="Input.InvoiceDate" class="form-control" />
+                        <label class="form-label">Invoice Date</label>
+                        <small><ValidationMessage For="() => Input.InvoiceDate" class="text-danger" /></small>
+                    </div>
+                </div>
+            </div>
+        </BodyTemplate>
+        <FooterTemplate>
+            <Button Type="ButtonType.Submit" Color="ButtonColor.Primary" Class="btn-action">Submit</Button>
+            <div class="flex-grow-1" />
+            <Button @onclick="OnHideModal" Color="ButtonColor.Secondary" Class="btn-action">Cancel</Button>
+        </FooterTemplate>
+    </Modal>
+</EditForm>
+
+@code {
+    private Modal modal = default!;
+
+    [Parameter]
+    public Project Data { get; set; } = default!;
+
+    [SupplyParameterFromForm]
+    private InputModel Input { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback OnConfirmCB { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        if (Input is null)
+        {
+            Input = new()
+                {
+                    DueDate = Data.DueDate,
+                    InvoiceDate = Data.InvoiceDate,
+                };
+        }
+    }
+
+    private async Task OnValidSubmitAsync()
+    {
+        Data.Status = Input.Status;
+        Data.PONumber = Input.PONumber;
+        Data.DueDate = Input.DueDate;
+        Data.InvoiceDate = Input.InvoiceDate;
+
+        await OnConfirmCB.InvokeAsync();
+        await OnHideModal();
+    }
+
+    public async Task OnShowModal() => await modal.ShowAsync();
+    private async Task OnHideModal() => await modal.HideAsync();
+
+    private sealed class InputModel
+    {
+        [Required]
+        public string Status { get; set; }
+        public string PONumber { get; set; }
+        [Required]
+        public DateOnly DueDate { get; set; }
+        [Required]
+        public DateOnly InvoiceDate { get; set; }
+    }
+}

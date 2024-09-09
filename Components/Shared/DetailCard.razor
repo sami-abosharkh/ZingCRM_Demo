@@ -1,0 +1,16 @@
+﻿<div class="d-flex flex-column text-center w-100">
+    <div class="p-2 rounded-top user-select-none text-bg-dark @(TopMargin?"mt-3":"")">@Title</div>
+    <div class="@Class align-content-center rounded-bottom py-2 border-2 border-bottom h-100">@(string.IsNullOrEmpty(Detail) ? "N/A" : Detail)</div>
+</div>
+
+@code {
+    [Parameter]
+    public string Title { get; set; }
+    [Parameter]
+    public string Detail { get; set; }
+    [Parameter]
+    public bool TopMargin { get; set; } = false;
+    [Parameter]
+    public string Class { get; set; } = "bg-light-subtle";
+
+}

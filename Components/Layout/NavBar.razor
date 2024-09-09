@@ -1,12 +1,11 @@
 ﻿@implements IDisposable
 @inject NavigationManager NavigationManager
 
-<nav class="navbar navbar-expand-lg navbar-dark bg-dark border-bottom border-body" data-bs-theme="dark">
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark border-bottom border-body sticky-top" data-bs-theme="dark">
     <div class="container-fluid">
-        <a class="navbar-brand" href="">
-            <img src="https://logosandtypes.com/wp-content/uploads/2023/03/zimperium.svg" alt="Logo" width="30" height="24" class="d-inline-block align-text-top">
-            ZING
-        </a>
+        <div class="ps-2 pe-4">
+            <img src="/asset/zing-light.png" alt="Logo" width="100" draggable="false" (dragstart)="false;" />
+        </div>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
         </button>
@@ -23,9 +22,30 @@
             </div>
             <AuthorizeView Roles="@SD.Role_Admin">
                 <div class="nav-item">
-                    <NavLink class="nav-link" href="admin/users">
-                        <Icon Name="IconName.ArchiveFill" Class="pe-2" /> Users
-                    </NavLink>
+                    <div class="dropdown">
+                        <button class="nav-link dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <Icon Name="IconName.Sliders" Class="pe-2" /> System Management
+                        </button>
+                        <ul class="dropdown-menu">
+                            <div class="nav-item mb-2">
+                                <NavLink class="nav-link" href="management/users">
+                                    <Icon Name="IconName.PeopleFill" Class="pe-2" /> Users
+                                </NavLink>
+                            </div>
+                            <div class="nav-item">
+                                <NavLink class="nav-link" href="management/clients">
+                                    <Icon Name="IconName.BuildingFill" Class="pe-2" /> Clients
+                                </NavLink>
+                            </div>
+                            @*
+                            <div class="nav-item">
+                            <NavLink class="nav-link">
+                            <Icon Name="IconName.SlashCircle" Class="pe-2" /> Vendors
+                            </NavLink>
+                            </div>
+                            *@
+                        </ul>
+                    </div>
                 </div>
             </AuthorizeView>
             <div class="flex-grow-1" />
@@ -33,28 +53,23 @@
                 <Authorized>
                     <div class="nav-item">
                         <NavLink class="nav-link" href="Account/Manage">
-                            <span class="bi bi-person-fill-nav-menu" aria-hidden="true"></span> @context.User.Identity?.Name
+                            <Icon Name="IconName.PersonCircle" Class="pe-2" /> Account
                         </NavLink>
                     </div>
                     <div class="nav-item">
                         <form action="Account/Logout" method="post">
                             <AntiforgeryToken />
                             <input type="hidden" name="ReturnUrl" value="@currentUrl" />
-                            <button type="submit" class="nav-link">
-                                <span class="bi bi-arrow-bar-left-nav-menu" aria-hidden="true"></span> Logout
+                            <button type="submit" class="nav-link nav-danger">
+                                <Icon Name="IconName.BoxArrowRight" Class="pe-2" /> Logout
                             </button>
                         </form>
                     </div>
                 </Authorized>
                 <NotAuthorized>
                     <div class="nav-item">
-                        <NavLink class="nav-link" href="Account/Register">
-                            <span class="bi bi-person-nav-menu" aria-hidden="true"></span> Register
-                        </NavLink>
-                    </div>
-                    <div class="nav-item">
                         <NavLink class="nav-link" href="Account/Login">
-                            <span class="bi bi-person-badge-nav-menu" aria-hidden="true"></span> Login
+                            <Icon Name="IconName.BoxArrowInRight" Class="pe-2" /> Login
                         </NavLink>
                     </div>
                 </NotAuthorized>

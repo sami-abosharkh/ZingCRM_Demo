@@ -2,8 +2,8 @@
 
 namespace ZingCRM_Demo.Data.Repository.Interface
 {
-public interface IProjectRepository : IRepository<ProjectM>
-{
-Task UpdateAsync(ProjectM entity);
-}
+    public interface IProjectRepository : IRepository<Project>
+    {
+        Task UpdateAsync(Project entity);
+    }
 }

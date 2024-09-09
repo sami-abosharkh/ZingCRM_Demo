@@ -1,0 +1,141 @@
+﻿@if (Data is not null)
+{
+    <Button @onclick="OnShowModal" Color="ButtonColor.Warning" Class="btn-header-lg">
+        <Icon Name="IconName.PencilSquare" />
+        Edit
+    </Button>
+}
+else
+{
+    @if (IsForm)
+    {
+        <Button @onclick="OnShowOffcanvasClick" Color="ButtonColor.Secondary" Outline="true" Class="rounded-end">New</Button>
+    }
+    else
+    {
+        <Button @onclick="OnShowModal" Color="ButtonColor.Primary" Class="btn-header-lg">
+            <Icon Name="IconName.PersonPlusFill" />
+            Create Client
+        </Button>
+    }
+}
+
+
+<EditForm method="post" Model="Input" OnValidSubmit="OnValidSubmitAsync">
+    <DataAnnotationsValidator />
+    @if (IsForm)
+    {
+        <Offcanvas @ref="offcanvas" Title="Create Client">
+            <BodyTemplate>
+                <div class="form-floating mb-3">
+                    <InputText @bind-Value="Input.Name" class="form-control" placeholder="" />
+                    <label>Name</label>
+                    <small><ValidationMessage For="() => Input.Name" class="text-danger" /></small>
+                </div>
+                <div class="form-floating mb-3">
+                    <InputText @bind-Value="Input.Position" class="form-control" placeholder="" />
+                    <label>Position</label>
+                    <small><ValidationMessage For="() => Input.Position" class="text-danger" /></small>
+                </div>
+                <div class="form-floating mb-3">
+                    <InputText @bind-Value="Input.Email" class="form-control" placeholder="" />
+                    <label>Email</label>
+                    <small><ValidationMessage For="() => Input.Email" class="text-danger" /></small>
+                </div>
+                <div class="form-floating mb-3">
+                    <InputText @bind-Value="Input.PhoneNumber" class="form-control" placeholder="" />
+                    <label>Phone Number</label>
+                    <small><ValidationMessage For="() => Input.PhoneNumber" class="text-danger" /></small>
+                </div>
+                <Button Type="ButtonType.Submit" Color="ButtonColor.Primary" Class="btn-action">
+                    Create
+                </Button>
+            </BodyTemplate>
+        </Offcanvas>
+    }
+    else
+    {
+        <Modal @ref="modal" Title="@((Data is null) ? "Create Client" : "Edit Client")" IsScrollable="true" UseStaticBackdrop="true" IsVerticallyCentered="true" Fullscreen="ModalFullscreen.SmallDown">
+            <BodyTemplate>
+                <div class="form-floating mb-3">
+                    <InputText @bind-Value="Input.Name" class="form-control" placeholder="" />
+                    <label>Name</label>
+                    <small><ValidationMessage For="() => Input.Name" class="text-danger" /></small>
+                </div>
+                <div class="form-floating mb-3">
+                    <InputText @bind-Value="Input.Position" class="form-control" placeholder="" />
+                    <label>Position</label>
+                    <small><ValidationMessage For="() => Input.Position" class="text-danger" /></small>
+                </div>
+                <div class="form-floating mb-3">
+                    <InputText @bind-Value="Input.Email" class="form-control" placeholder="" />
+                    <label>Email</label>
+                    <small><ValidationMessage For="() => Input.Email" class="text-danger" /></small>
+                </div>
+                <div class="form-floating mb-3">
+                    <InputText @bind-Value="Input.PhoneNumber" class="form-control" placeholder="" />
+                    <label>Phone Number</label>
+                    <small><ValidationMessage For="() => Input.PhoneNumber" class="text-danger" /></small>
+                </div>
+            </BodyTemplate>
+            <FooterTemplate>
+                <Button Type="ButtonType.Submit" Color="ButtonColor.Primary" Class="@(Data is null ? "btn-action" : "")">
+                    @(Data is null ? "Create" : "Save changes")
+                </Button>
+                <div class="flex-grow-1" />
+                <Button @onclick="OnHideModal" Color="ButtonColor.Secondary" Class="btn-action">Cancel</Button>
+            </FooterTemplate>
+        </Modal>
+    }
+</EditForm>
+
+@code {
+    private Modal modal = default!;
+    private Offcanvas offcanvas = default!;
+
+    [Parameter]
+    public bool IsForm { get; set; } = false;
+
+    [Parameter]
+    public Client Data { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback<ClientCreateDTO> OnPush { get; set; }
+
+    [SupplyParameterFromForm]
+    private ClientCreateDTO Input { get; set; } = new();
+
+    protected override void OnParametersSet()
+    {
+        if (Data is not null && string.IsNullOrEmpty(Input.Email))
+        {
+            Input = new()
+                {
+                    Name = Data.Name,
+                    Position = Data.Position,
+                    Email = Data.Email,
+                    PhoneNumber = Data.PhoneNumber,
+                };
+        }
+    }
+
+    private async Task OnValidSubmitAsync()
+    {
+        await OnPush.InvokeAsync(Input);
+
+        if (IsForm)
+        {
+            await OnHideOffcanvasClick();
+        }
+        else
+        {
+            await OnHideModal();
+        }
+    }
+
+    private async Task OnShowModal() => await modal.ShowAsync();
+    private async Task OnHideModal() => await modal.HideAsync();
+
+    private async Task OnShowOffcanvasClick() => await offcanvas.ShowAsync();
+    private async Task OnHideOffcanvasClick() => await offcanvas.HideAsync();
+}

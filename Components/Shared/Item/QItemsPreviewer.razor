@@ -1,0 +1,139 @@
+﻿<Grid TItem="ItemVM"
+      Class="table table-hover table-bordered table-striped"
+      Data="ItemsVM"
+      AllowSorting="true"
+      FixedHeader="@(Data.Count > 9 ? true : false)"
+      Height="410"
+      Unit="Unit.Px"
+      Responsive="true">
+    <GridColumns>
+        <GridColumn TItem="ItemVM" HeaderText="Category" SortKeySelector="item => item.Category">
+            <Tooltip Class="px-2" Title="@context.CategoryDescription" Placement="TooltipPlacement.Right">@context.Category</Tooltip>
+        </GridColumn>
+        <GridColumn TItem="ItemVM" HeaderText="Name" SortKeySelector="item => item.Name">
+            <Tooltip Class="px-2" Title="@context.Description" Placement="TooltipPlacement.Right">@context.Name</Tooltip>
+        </GridColumn>
+        <GridColumn TItem="ItemVM" HeaderText="Quantity" SortKeySelector="item => item.Quantity">
+            @context.Quantity
+        </GridColumn>
+        <GridColumn TItem="ItemVM" HeaderText="Cost" SortKeySelector="item => item.Cost">
+            @context.Cost?.ToString("N2")
+        </GridColumn>
+        <GridColumn TItem="ItemVM" HeaderText="Price" SortKeySelector="item => item.Price">
+            @context.Price?.ToString("N2")
+        </GridColumn>
+        <GridColumn TItem="ItemVM" HeaderText="Total Cost" SortKeySelector="item => item.TotalCost">
+            @context.TotalCost?.ToString("N2")
+        </GridColumn>
+        <GridColumn TItem="ItemVM" HeaderText="Total Price" SortKeySelector="item => item.TotalPrice">
+            @context.TotalPrice?.ToString("N2")
+        </GridColumn>
+        <GridColumn TItem="ItemVM" HeaderText="Margin" SortKeySelector="item => item.Margin" ColumnClass="@(x => (!x.Margin.HasValue || x.Margin > 0) ? "" : "table-danger")">
+            @context.Margin?.ToString("N2")
+        </GridColumn>
+        <GridColumn TItem="ItemVM" HeaderText="Total Margin" SortKeySelector="item => item.TotalMargin" ColumnClass="@(x => (!x.TotalMargin.HasValue || x.TotalMargin > 0) ? "" : "table-danger")">
+            @context.TotalMargin?.ToString("N2")
+        </GridColumn>
+        <GridColumn TItem="ItemVM" HeaderText="Margin %" SortKeySelector="item => item.MarginPercent" ColumnClass="@(x => (!x.MarginPercent.HasValue || x.MarginPercent > 0.15m) ? "" : "table-danger")">
+            @context.MarginPercent?.ToString("P2")
+        </GridColumn>
+    </GridColumns>
+</Grid>
+
+<div class="row">
+    <div class="col-md-3">
+        <DetailCard Title="Total Cost" Detail="@TotalCost?.ToString("N2")"></DetailCard>
+    </div>
+    <div class="col-md-3">
+        <DetailCard Title="Total Price" Detail="@TotalPrice?.ToString("N2")"></DetailCard>
+    </div>
+    <div class="col-md-3">
+        <DetailCard Title="Margin $" Detail="@(TotalMargin?.ToString("N2"))"></DetailCard>
+    </div>
+    <div class="col-md-3">
+        @if (MarginPercent.HasValue)
+        {
+            @if (MarginPercent > .15m)
+            {
+                <DetailCard Title="Margin %" Detail="@($"{MarginPercent?.ToString("P2")} {(MarginPercent >= .30m ? "📈🤑" : "📊🤔")}")" Class="@(MarginPercent > .15m && MarginPercent < .30m ? "bg-warning-subtle" : "bg-success-subtle")"></DetailCard>
+            }
+            else
+            {
+                <DetailCard Title="Margin %" Detail="@($"{MarginPercent?.ToString("P2")} 📉🤬")" Class="bg-danger-subtle"></DetailCard>
+            }
+        }
+        else
+        {
+            <DetailCard Title="Margin %" Detail=""></DetailCard>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public List<QuotationItem> Data { get; set; } = default!;
+
+    private decimal? TotalCost { get; set; }
+    private decimal? TotalPrice { get; set; }
+    private decimal? TotalMargin { get; set; }
+    private decimal? MarginPercent { get; set; }
+
+    private List<ItemVM> ItemsVM { get; set; } = new();
+
+    protected override void OnParametersSet()
+    {
+        if (Data is not null && Data.Any())
+        {
+            ItemsVM = Data.Select(item => new ItemVM
+                {
+                    Category = item.Item.Category.Name,
+                    CategoryDescription = item.Item.Category.Description,
+                    Name = item.Item.Name,
+                    Description = item.Description,
+                    Quantity = item.Quantity,
+                    Cost = item.Cost ?? null,
+                    Price = item.Price ?? null,
+                    TotalCost = item.Cost.HasValue ? item.Cost * item.Quantity : null,
+                    TotalPrice = item.Price.HasValue ? item.Price * item.Quantity : null,
+                    Margin = item.Price - item.Cost,
+                    TotalMargin = (item.Price - item.Cost) * item.Quantity,
+                    MarginPercent = ((item.Price - item.Cost) * item.Quantity) / (item.Cost * item.Quantity),
+                }).ToList();
+
+            RefreshData();
+        }
+    }
+
+    private void RefreshData()
+    {
+        if (Data.All(item => item.Cost.HasValue))
+        {
+            TotalCost = Data.Sum(item => item.Cost.Value * item.Quantity);
+        }
+        if (Data.All(item => item.Price.HasValue))
+        {
+            TotalPrice = Data.Sum(item => item.Price.Value * item.Quantity);
+        }
+        if (TotalCost.HasValue && TotalPrice.HasValue)
+        {
+            TotalMargin = TotalPrice - TotalCost;
+            MarginPercent = TotalMargin / TotalCost;
+        }
+    }
+
+    private sealed class ItemVM
+    {
+        public string Name { get; set; }
+        public string Description { get; set; }
+        public string Category { get; set; }
+        public string CategoryDescription { get; set; }
+        public int Quantity { get; set; }
+        public decimal? Cost { get; set; }
+        public decimal? Price { get; set; }
+        public decimal? TotalCost { get; set; }
+        public decimal? TotalPrice { get; set; }
+        public decimal? Margin { get; set; }
+        public decimal? TotalMargin { get; set; }
+        public decimal? MarginPercent { get; set; }
+    }
+}

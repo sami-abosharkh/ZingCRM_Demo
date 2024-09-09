@@ -1,0 +1,168 @@
+﻿<Grid TItem="PurchaseRequisitionVM"
+      Class="table table-hover table-bordered table-striped"
+      Data="ItemsVM"
+      AllowSorting="true"
+      FixedHeader="@(Data.Count > 9 ? true : false)"
+      Height="410"
+      Unit="Unit.Px"
+      Responsive="true">
+    <GridColumns>
+        <GridColumn TItem="PurchaseRequisitionVM" HeaderText="PR #">
+            <Tooltip Class="px-2" Title="@context.Description" Placement="TooltipPlacement.Right">@context.Number</Tooltip>
+        </GridColumn>
+        <GridColumn TItem="PurchaseRequisitionVM" HeaderText="Status">
+            @context.Status
+        </GridColumn>
+        <GridColumn TItem="PurchaseRequisitionVM" HeaderText="Requested Amount">
+            @context.Amount
+        </GridColumn>
+        <GridColumn TItem="PurchaseRequisitionVM" HeaderText="Time Created">
+            @context.Date
+        </GridColumn>
+        @*
+        <GridColumn TItem="PurchaseRequisitionVM" HeaderText="Action">
+        <Button Color="ButtonColor.Success">Approve</Button>
+        <Button Color="ButtonColor.Warning">Edit</Button>
+        </GridColumn>
+        *@
+    </GridColumns>
+</Grid>
+
+@*
+<table class="table table-bordered table-hover table-responsive align-middle text-center">
+    <caption class="mb-0">List of Payment Requests</caption>
+    <thead class="table-light">
+        <tr>
+            <th scope="col">#</th>
+            <th scope="col">PR Number</th>
+            <th scope="col">Status</th>
+            <th scope="col">Operation</th>
+            <th scope="col">Requested Amount</th>
+            <th scope="col">Time Created</th>
+            <th scope="col" width="10">Action</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Data)
+        {
+            <tr>
+                <td scope="row" class="fw-bold">@(Data.ToList().IndexOf(item) + 1)</td>
+                <td>@item.Number</td>
+                <td>@item.Status</td>
+                <td>N/A</td>
+                <td></td>
+                <td>@item.Date</td>
+                <td>
+                    @if (item.Status.Equals(SD.Status_Pending))
+                    {
+                        <ActionConfirmation OnEventCB="() => OnPushCB.InvokeAsync(item)"
+                                            Action="Approve"
+                                            ButtonColor="ButtonColor.Success"
+                                            ButtonClass="btn-action"
+                                            DialogTitle="Confirmation Required"
+                                            DialogMessage1="Are you sure you want to approve this payment request?"
+                                            DialogMessage2="Please ensure all information is accurate before proceeding.">
+                        </ActionConfirmation>
+                    }
+                    else if (item.Status.Equals(SD.Status_Approved))
+                    {
+                        <ActionConfirmation OnEventCB="() => OnPushCB.InvokeAsync(item)"
+                                            Action="@SD.Status_Transferred"
+                                            ButtonColor="ButtonColor.Info"
+                                            ButtonClass="text-nowrap"
+                                            DialogTitle="Confirmation Required"
+                                            DialogMessage1="Are you sure you want to approve this payment request?"
+                                            DialogMessage2="Please ensure all information is accurate before proceeding.">
+                        </ActionConfirmation>
+                    }
+                    else
+                    {
+                        <Button Color="ButtonColor.Success" Disabled="true">Done</Button>
+                    }
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+ *@
+
+<div class="row">
+    <div class="col-md-3">
+        <DetailCard Title="Total Budget" Detail="@TotalBudget?.ToString("F2")"></DetailCard>
+    </div>
+    <div class="col-md-3">
+        <DetailCard Title="Total Requested" Detail="@TotalRequested?.ToString("F2")"></DetailCard>
+    </div>
+    <div class="col-md-3">
+        <DetailCard Title="Total Transferred" Detail="@TotalTransferred?.ToString("F2")"></DetailCard>
+    </div>
+    <div class="col-md-3">
+        <DetailCard Title="Total Remaining" Detail="@TotalRemaining?.ToString("F2")"></DetailCard>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public List<PurchaseRequisition> Data { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback<PurchaseRequisition> OnPushCB { get; set; }
+
+    private List<PurchaseRequisitionVM> ItemsVM { get; set; } = new();
+
+    private decimal? TotalBudget { get; set; }
+    private decimal? TotalRemaining { get; set; }
+    private decimal? TotalRequested { get; set; }
+    private decimal? TotalTransferred { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        if (Data is not null && Data.Any())
+        {
+            ItemsVM = Data.Select(item => new PurchaseRequisitionVM
+                {
+                    Number = item.Number.ToString(),
+                    Description = item.Description,
+                    Status = item.Status,
+                    Date = item.Date,
+                    Amount = item.RequestedAmount.ToString("N2")
+                }).ToList();
+
+            RefreshData();
+        }
+    }
+
+
+    // private void RefreshPR()
+    // {
+        // TotalRequested = PurchaseRequisitions.Sum(item => item.RequisitionEntries.Sum(p => p.QuotedItem.Cost.Value * (decimal)p.Quantity));
+        // TotalRemaining = TotalCost - TotalRequested;
+        // TotalTransferred = PurchaseRequisitions.Where(item => item.Status.Equals(SD.Status_Transferred)).Sum(item => item.RequisitionEntries.Sum(p => p.QuotedItem.Cost.Value * (decimal)p.Quantity));
+    // }
+
+    private void RefreshData()
+    {
+        // if (Data.All(item => item.Cost.HasValue))
+        // {
+        //     TotalCost = Data.Sum(item => item.Cost.Value * item.Quantity);
+        // }
+        // if (Data.All(item => item.Price.HasValue))
+        // {
+        //     TotalPrice = Data.Sum(item => item.Price.Value * item.Quantity);
+        // }
+        // if (TotalCost.HasValue && TotalPrice.HasValue)
+        // {
+        //     TotalMargin = TotalPrice - TotalCost;
+        //     MarginPercent = TotalMargin / TotalCost;
+        // }
+    }
+
+    private sealed class PurchaseRequisitionVM
+    {
+        public string Number { get; set; }
+        public string Description { get; set; }
+        public string Status { get; set; }
+        public string Amount { get; set; }
+        public DateTime Date { get; set; }
+    }
+}

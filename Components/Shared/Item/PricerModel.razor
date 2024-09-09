@@ -1,0 +1,202 @@
+﻿@if (Data is not null)
+{
+    @if (Data.All(item => item.Price > 0))
+    {
+        <Button @onclick="OnShowModal" Color="ButtonColor.Warning" Class="btn-header-sm mx-2">
+            <Icon Name="IconName.PencilSquare" />
+            Edit
+        </Button>
+    }
+    else
+    {
+        <Button @onclick="OnShowModal" Color="ButtonColor.Primary" Class="btn-header-lg ms-2">
+            <Icon Name="IconName.PencilSquare" />
+            Quote Price
+        </Button>
+    }
+    <Modal @ref="modal" Title="Price Quotation" IsScrollable="true" UseStaticBackdrop="true" IsVerticallyCentered="true" Size="ModalSize.ExtraLarge" Fullscreen="ModalFullscreen.LargeDown">
+        <BodyTemplate>
+            <table class="table table-bordered table-hover table-responsive align-middle text-center m-0">
+                <caption class="pb-0">List of Quotable Items</caption>
+                <thead class="table-light">
+                    <tr>
+                        <th scope="col">Name</th>
+                        <th scope="col">Quantity</th>
+                        <th scope="col">Cost</th>
+                        <th scope="col" style="width: 200px; min-width: 150px;">Price</th>
+                        <th scope="col">Margin</th>
+                        <th scope="col">Total Margin</th>
+                        <th scope="col">Margin %</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in ItemsDTO)
+                    {
+                        <tr>
+                            <td>
+                                <Tooltip Class="px-2" Title="@item.Description" Placement="TooltipPlacement.Right">@item.Item.Name</Tooltip>
+                            </td>
+                            <td>@item.Quantity</td>
+                            <td>@item.Cost</td>
+                            <td>
+                                <div class="input-group">
+                                    <span class="input-group-text">SR</span>
+                                    <input type="number" step="5" value="@item.Price" @oninput="(e) => OnPriceChanged(e, item)" class="form-control @(item.Price.HasValue ? "" : "bg-warning-subtle")" placeholder="Price" />
+                                </div>
+                            </td>
+                            <td class="@(!item.TotalMargin.HasValue || item.Margin >= 0 ? "" : "bg-danger-subtle")">@(item.Margin?.ToString("N2"))</td>
+                            <td class="@(!item.TotalMargin.HasValue || item.TotalMargin >= 0 ? "" : "bg-danger-subtle")">@(item.TotalMargin?.ToString("N2"))</td>
+                            @if (item.MarginPercent.HasValue)
+                            {
+                                @if (item.MarginPercent > .15m)
+                                {
+                                    <td class="@(item.MarginPercent > .15m && item.MarginPercent < .30m ? "bg-warning-subtle" : "bg-success-subtle")">@((item.MarginPercent ?? 0m).ToString("P2"))</td>
+                                }
+                                else
+                                {
+                                    <td class="bg-danger-subtle">@((item.MarginPercent ?? 0m).ToString("P2"))</td>
+                                }
+                            }
+                            else
+                            {
+                                <td>@(item.MarginPercent?.ToString("P2"))</td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+                <tfoot>
+                    <tr class="fw-bold">
+                        <td colspan="2">Total</td>
+                        <td>@TotalCost.ToString("N2")</td>
+                        <td class="bg-light">@TotalPrice?.ToString("N2")</td>
+                        <td></td>
+                        <td class="@((!TotalMargin.HasValue || TotalMargin >= 0) ? "bg-light" : "bg-danger-subtle")">@TotalMargin?.ToString("N2")</td>
+                        @if (TotalMarginPercent.HasValue)
+                        {
+                            @if (TotalMarginPercent > .15m)
+                            {
+                                <td class="@(TotalMarginPercent > .15m && TotalMarginPercent < .30m ? "bg-warning-subtle" : "bg-success-subtle")">@TotalMarginPercent?.ToString("P2")</td>
+                            }
+                            else
+                            {
+                                <td class="bg-danger-subtle">@TotalMarginPercent?.ToString("P2")</td>
+                            }
+                        }
+                        else
+                        {
+                            <td class="bg-light">@TotalMarginPercent?.ToString("P2")</td>
+                        }
+                    </tr>
+                </tfoot>
+            </table>
+            @if (IsSubmitFailed)
+            {
+                <Alert Color="AlertColor.Danger" Class="mt-3 mb-0">
+                    <Icon Name="IconName.ExclamationTriangleFill" Class="me-2"></Icon>
+                    To proceed, please ensure that prices are entered for all items.
+                </Alert>
+            }
+        </BodyTemplate>
+        <FooterTemplate>
+            <Button @onclick="OnValidSubmitAsync" Color="ButtonColor.Primary" Class="btn-action">Save</Button>
+            <div class="flex-grow-1" />
+            <Button @onclick="OnHideModal" Color="ButtonColor.Secondary" Class="btn-action">Cancel</Button>
+        </FooterTemplate>
+    </Modal>
+}
+
+@code {
+    private Modal modal = default!;
+
+    private decimal TotalCost { get; set; }
+    private decimal? TotalPrice { get; set; }
+    private decimal? TotalMargin { get; set; }
+    private decimal? TotalMarginPercent { get; set; }
+
+    [Parameter]
+    public List<QuotationItem> Data { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback<List<ItemPriceDTO>> OnPriceQuotationCB { get; set; }
+
+    private List<ItemPriceDTO> ItemsDTO { get; set; } = default!;
+
+    private bool IsSubmitFailed { get; set; } = false;
+
+    protected override void OnParametersSet()
+    {
+        if (ItemsDTO is null && Data is not null)
+        {
+            ItemsDTO = Data.Select(item => new ItemPriceDTO
+                {
+                    Id = item.Id,
+                    Item = item.Item,
+                    Quantity = item.Quantity,
+                    Description = item.Description,
+                    Cost = item.Cost.Value,
+                    Price = item.Price,
+                    Margin = item.Price - item.Cost,
+                    TotalMargin = (item.Price - item.Cost) * item.Quantity,
+                    MarginPercent = ((item.Price - item.Cost) * item.Quantity) / (item.Price * item.Quantity),
+                }).ToList();
+
+            TotalCost = ItemsDTO.Sum(item => item.Cost * item.Quantity);
+            UpdateData();
+        }
+    }
+
+    private void OnPriceChanged(ChangeEventArgs e, ItemPriceDTO item)
+    {
+        // Explicitly cast e.Value to decimal if it's not null
+        if (e.Value != null && decimal.TryParse(e.Value.ToString(), out decimal input))
+        {
+            item.Price = input; // Update the item's price
+            item.Margin = input - item.Cost;
+            item.TotalMargin = (input - item.Cost) * item.Quantity;
+            item.MarginPercent = item.TotalMargin / (item.Cost * item.Quantity);
+            IsSubmitFailed = false;
+        }
+        else
+        {
+            item.Price = null; // Handle the case when the input is invalid or null
+            item.Margin = null;
+            item.TotalMargin = null;
+            item.MarginPercent = null;
+        }
+
+        UpdateData();
+    }
+
+    // Method receives the item that was submitted
+    private async Task OnValidSubmitAsync()
+    {
+        if (ItemsDTO.All(item => item.Price.HasValue))
+        {
+            await OnPriceQuotationCB.InvokeAsync(ItemsDTO);
+            await OnHideModal();
+        }
+        else
+        {
+            IsSubmitFailed = true;
+        }
+    }
+
+    private void UpdateData()
+    {
+        if (ItemsDTO.All(item => item.Price.HasValue))
+        {
+            TotalPrice = ItemsDTO.Sum(item => item.Price * item.Quantity);
+            TotalMargin = TotalPrice - TotalCost;
+            TotalMarginPercent = TotalMargin / TotalCost;
+        }
+        else
+        {
+            TotalPrice = null;
+            TotalMargin = null;
+            TotalMarginPercent = null;
+        }
+    }
+
+    private async Task OnShowModal() => await modal.ShowAsync();
+    private async Task OnHideModal() => await modal.HideAsync();
+}
