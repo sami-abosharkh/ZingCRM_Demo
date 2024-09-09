@@ -1,19 +1,19 @@
 ﻿@inherits LayoutComponentBase
 
-<div class="page">
-<main>
-<NavBar />
-<div class="container">
-<br />
-@Body
-</div>
-</main>
+<div class="d-flex flex-column h-100">
+    <NavBar />
+    <main class="d-flex flex-column"> 
+        <br />
+        @Body
+        <br />
+    </main>
 </div>
 
 <div id="blazor-error-ui">
-An unhandled error has occurred.
-<a href="" class="reload">Reload</a>
-<a class="dismiss">🗙</a>
+    An unhandled error has occurred.
+    <a href="" class="reload">Reload</a>
+    <a class="dismiss">🗙</a>
 </div>
 
 <Preload @rendermode="InteractiveServer" LoadingText="Loading..." />
+<Toasts @rendermode="InteractiveServer" Class="p-3" AutoHide="true" Delay="4000" Placement="ToastsPlacement.TopRight" />

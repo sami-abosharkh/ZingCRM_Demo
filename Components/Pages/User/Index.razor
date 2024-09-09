@@ -1,0 +1,108 @@
+﻿@page "/management/users"
+
+@rendermode InteractiveServer
+
+@inject NavigationManager NavManager
+@inject UserManager<ApplicationUser> UserManager
+
+@attribute [StreamRendering]
+@attribute [Authorize(Roles = SD.Role_Admin)]
+
+<PageTitle>Users Management - Zing</PageTitle>
+
+<div class="row">
+    <div class="col">
+        <HeadingTitle Title="Users Management"></HeadingTitle>
+    </div>
+    <div class="col-auto align-content-center">
+        <div class="d-flex">
+            <UserManager OnPush="CreateUser"></UserManager>
+        </div>
+        <br />
+    </div>
+</div>
+
+@if (Users is null)
+{
+    <div class="d-flex flex-column justify-content-center align-items-center h-100">
+        <Spinner Type="SpinnerType.Dots" Color="SpinnerColor.Primary" Size="SpinnerSize.Large" />
+    </div>
+}
+else
+{
+    <UsersGrider Data="Users"></UsersGrider>
+}
+
+@code {
+    [Inject] protected ToastService ToastService { get; set; } = default!;
+
+    List<ApplicationUser> Users = default!;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        await GetUsers();
+    }
+
+    private async Task GetUsers()
+    {
+        Users = UserManager.Users.Where(p => !p.Email.Contains(SD.Role_Admin)).ToList() ?? new();
+
+        // Get roles for each user and assign it to the user object
+        foreach (var item in Users)
+        {
+            item.Roles = (await UserManager.GetRolesAsync(item)).ToList();
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task CreateUser(UserDTO model)
+    {
+        try
+        {
+            ApplicationUser user = new()
+                {
+                    FirstName = model.FirstName,
+                    LastName = model.LastName,
+                    Email = model.Email,
+                    UserName = model.Email,
+                    PhoneNumber = model.PhoneNumber,
+                    TimeCreated = DateTime.Now,
+                    Roles = model.Roles.Where(p => p.Selected).Select(p => p.Name).ToList()
+                };
+
+            // Create the user in the identity system
+            var result = await UserManager.CreateAsync(user, model.Password);
+
+            // If user creation is successful, add the user to the selected role
+            if (result.Succeeded)
+            {
+                foreach (var role in model.Roles)
+                {
+                    if (role.Selected == true)
+                    {
+                        await UserManager.AddToRoleAsync(user, role.Name);
+                    }
+                }
+
+                await GetUsers();
+                ToastService.Notify(new(ToastType.Success, "User Created", $"The user '{user.FirstName} {user.LastName}' has been created successfully."));
+            }
+            else
+            {
+                foreach (var item in result.Errors)
+                {
+                    ToastService.Notify(new(ToastType.Danger, "Action Failed", item.Description));
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            // handle exception
+            Console.WriteLine($"An error occurred: {ex.Message}");
+            ToastService.Notify(new(ToastType.Danger, $"Error: {ex.Message}."));
+        }
+    }
+}

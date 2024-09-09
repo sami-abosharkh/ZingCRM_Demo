@@ -1,0 +1,84 @@
+﻿@inject IJSRuntime JS
+
+<Grid TItem="ApplicationUser"
+      Class="table table-hover table-bordered table-striped"
+      Data="Data"
+      AllowSorting="true"
+      AllowPaging="true"
+      PageSize="10"
+      AutoHidePaging="true"
+      AllowRowClick="true"
+      OnRowDoubleClick="OnRowDoubleClick"
+      RowClass="GetRowClass"
+      AllowFiltering="true"
+      Responsive="true">
+    <GridColumns>
+        <GridColumn TItem="ApplicationUser" HeaderText="#" Filterable="false" Class="fw-bold">
+            @(Data.IndexOf(context) + 1)
+        </GridColumn>
+        <GridColumn TItem="ApplicationUser" HeaderText="Name" SortKeySelector="item => item.FirstName" PropertyName="FirstName" TextNoWrap="true">
+            @($"{context.FirstName} {context.LastName}")
+        </GridColumn>
+        <GridColumn TItem="ApplicationUser" HeaderText="Email" SortKeySelector="item => item.Email" PropertyName="Email" TextNoWrap="true">
+            @context.Email
+        </GridColumn>
+        <GridColumn TItem="ApplicationUser" HeaderText="Role" TextNoWrap="true">
+            @foreach (var item in context.Roles)
+            {
+                <Badge Class="me-2">@item</Badge>
+            }
+        </GridColumn>
+        <GridColumn TItem="ApplicationUser" HeaderText="Last Login" SortKeySelector="item => item.LastLogin" Filterable="false" TextNoWrap="true">
+            @(context.LastLogin is null ? "N/A" : TimeSinceDate(context.LastLogin))
+        </GridColumn>
+        <GridColumn TItem="ApplicationUser" HeaderText="Lockout End" SortKeySelector="item => item.LockoutEnd" Filterable="false" TextNoWrap="true">
+            @(context.LockoutEnd is null ? "N/A" : context.LockoutEnd)
+        </GridColumn>
+    </GridColumns>
+</Grid>
+
+@code {
+    [Parameter]
+    public List<ApplicationUser> Data { get; set; } = new();
+
+    private async Task OnRowDoubleClick(GridRowEventArgs<ApplicationUser> args) => await JS.InvokeVoidAsync("openInNewTab", $"/management/user?id={args.Item.Id}");
+
+    // Method to calculate the time since a given date and return a human-readable string
+    private string TimeSinceDate(DateTime? date)
+    {
+        string text = "";
+
+        // Calculate the time difference from the provided date
+        if (date is not null)
+        {
+            TimeSpan timeSpan = DateTime.Now - (DateTime)date;
+            if (timeSpan.TotalMinutes < 1)
+            {
+                text = "just now";
+            }
+            else if (timeSpan.TotalMinutes < 60)
+            {
+                text = $"{(int)timeSpan.TotalMinutes} mins ago";
+            }
+            else if (timeSpan.TotalHours < 24)
+            {
+                text = $"{(int)timeSpan.TotalHours} hours ago";
+            }
+            else if (timeSpan.TotalDays < 30)
+            {
+                text = $"{(int)timeSpan.TotalDays} days ago";
+            }
+            else if (timeSpan.TotalDays < 365)
+            {
+                text = $"{(int)(timeSpan.TotalDays / 30)} months ago";
+            }
+            else
+            {
+                text = $"{(int)(timeSpan.TotalDays / 365)} years ago";
+            }
+        }
+        return text;
+    }
+
+    private string GetRowClass(ApplicationUser entity) => entity.LockoutEnd > DateTime.Now ? "table-danger" : "";
+}

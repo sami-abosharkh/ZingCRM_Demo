@@ -1,0 +1,90 @@
+﻿@page "/management/categories"
+
+@rendermode InteractiveServer
+
+@inject NavigationManager NavManager
+@inject ICategoryRepository CategoryRepo
+@inject IItemRepository ItemRepo
+
+@attribute [StreamRendering]
+@attribute [Authorize(Roles = SD.Role_Admin)]
+
+<PageTitle>Categories Management - Zing</PageTitle>
+
+<div class="row">
+    <div class="col">
+        <HeadingTitle Title="CATEGORIES MANAGEMENT"></HeadingTitle>
+    </div>
+    <div class="col-auto align-content-center">
+        <div class="d-flex">
+            <Button Color="ButtonColor.Primary" Class="btn-header-lg">
+                <Icon Name="IconName.TagFill" />
+                Create Category
+            </Button>
+        </div>
+        <br />
+    </div>
+</div>
+
+@if (Categories is null)
+{
+    <div class="d-flex flex-column justify-content-center align-items-center h-100">
+        <Spinner Type="SpinnerType.Dots" Color="SpinnerColor.Primary" Size="SpinnerSize.Large" />
+    </div>
+}
+else
+{
+    <CategoriesGrider Data="Categories.ToList()"></CategoriesGrider>
+}
+
+@code {
+    [Inject] protected ToastService ToastService { get; set; } = default!;
+    [Inject] protected PreloadService PreloadService { get; set; } = default!;
+
+    List<Category> Categories = default!;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        await GetCategories();
+    }
+
+    public async Task GetCategories()
+    {
+        Categories = await CategoryRepo.GetAllAsync() ?? new();
+
+        foreach (var item in Categories)
+        {
+            item.ItemsTotal = await ItemRepo.GetTotalCountAsync(filter: p => p.CategoryId.Equals(item.Id));
+        }
+
+        StateHasChanged();
+    }
+
+    public async Task CreateCategoryAsync(CategoryDTO model)
+    {
+        try
+        {
+            PreloadService.Show();
+            Category entity = new()
+                {
+                    Name = model.Name,
+                    Description = model.Description
+                };
+
+            await CategoryRepo.CreateAsync(entity);
+            ToastService.Notify(new(ToastType.Success, "Action Successful", $"Client was created successfully."));
+            await GetCategories();
+        }
+        catch (Exception ex)
+        {
+            // handle exception
+            Console.WriteLine($"An error occurred: {ex.Message}");
+            ToastService.Notify(new(ToastType.Danger, $"Error: {ex.Message}."));
+        }
+        finally
+        {
+            PreloadService.Hide();
+        }
+    }
+}

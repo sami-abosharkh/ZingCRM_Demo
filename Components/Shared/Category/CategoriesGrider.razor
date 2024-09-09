@@ -1,0 +1,31 @@
+﻿@inject IJSRuntime JS
+
+<Grid TItem="Category"
+      Class="table table-hover table-bordered table-striped"
+      Data="Data"
+      FixedHeader="true" Height="float.MaxValue" Unit="Unit.Px"
+      AllowRowClick="true" OnRowDoubleClick="OnRowDoubleClick"
+      AllowPaging="true" AutoHidePaging="true" PageSize="20"
+      AllowFiltering="true"
+      AllowSorting="true"
+      Responsive="true">
+
+    <GridColumns>
+        <GridColumn TItem="Category" HeaderText="Name" SortKeySelector="item => item.Name" PropertyName="Name">
+            @context.Name
+        </GridColumn>
+        <GridColumn TItem="Category" HeaderText="Description" SortKeySelector="item => item.Description" PropertyName="Description">
+            @context.Description
+        </GridColumn>
+        <GridColumn TItem="Category" HeaderText="Total Items" SortKeySelector="item => item.ItemsTotal" PropertyName="ItemsTotal">
+            @context.ItemsTotal.ToString("N0")
+        </GridColumn>
+    </GridColumns>
+</Grid>
+
+@code {
+    [Parameter]
+    public List<Category> Data { get; set; } = default!;
+
+    private async Task OnRowDoubleClick(GridRowEventArgs<Category> args) => await JS.InvokeVoidAsync("openInNewTab", $"/management/category?id={args.Item.Id}");
+}

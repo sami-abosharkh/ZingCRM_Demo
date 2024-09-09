@@ -1,0 +1,171 @@
+﻿@inject IClientRepository ClientRepo
+@inject UserManager<ApplicationUser> UserManager
+
+@if (Data is not null)
+{
+    <Button @onclick="OnShowModal" Color="ButtonColor.Warning" Class="btn-action me-2">
+        <Icon Name="IconName.PencilSquare" />
+        Edit
+    </Button>
+}
+else
+{
+    <Button @onclick="OnShowModal" Color="ButtonColor.Primary" Class="btn-header-lg">
+        <Icon Name="IconName.PersonPlusFill" />
+        Create Project
+    </Button>
+}
+
+<EditForm autocomplete="off" method="post" Model="Input" OnValidSubmit="OnValidSubmitAsync">
+    <DataAnnotationsValidator />
+    <Modal @ref="modal" Title="@((Data is null) ? "Create Project" : "Edit Project")" IsScrollable="true" UseStaticBackdrop="true" IsVerticallyCentered="true" Size="ModalSize.Large" Fullscreen="ModalFullscreen.SmallDown">
+        <BodyTemplate>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <div class="input-group">
+                        <div class="form-floating">
+                            <InputSelect id="client" class="form-select" @bind-Value="Input.ClientId">
+                                <option selected disabled>Select Client</option>
+                                @foreach (var client in Clients)
+                                {
+                                    <option value="@client.Id">@client.Name</option>
+                                }
+                            </InputSelect>
+                            <label for="client">Client</label>
+                        </div>
+                        <ClientUpsert OnPush="CreateClient" IsForm="true"></ClientUpsert>
+                    </div>
+                    <small><ValidationMessage For="() => Input.ClientId" class="text-danger" /></small>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-floating mb-3">
+                        <InputText id="name" @bind-Value="Input.Name" class="form-control" placeholder="" />
+                        <label for="name" class="form-label">Project Name</label>
+                        <small><ValidationMessage For="() => Input.Name" class="text-danger" /></small>
+                    </div>
+                </div>
+            </div>
+            <div class="form-floating mb-3">
+                <InputSelect id="Operation" class="form-select" @bind-Value="Input.OperationUserId">
+                    <option selected disabled>Select Operation</option>
+                    @foreach (var user in OperationUsers)
+                    {
+                        <option value="@user.Id">@($"{user.FirstName} {user.LastName}")</option>
+                    }
+                </InputSelect>
+                <label for="Operation">Operation Manager</label>
+                <small><ValidationMessage For="() => Input.OperationUserId" class="text-danger" /></small>
+            </div>
+            <div class="form-floating mb-3">
+                <InputDate id="DueDate" @bind-Value="Input.DueDate" class="form-control" />
+                <label for="DueDate" class="form-label">Due Date</label>
+                <small><ValidationMessage For="() => Input.DueDate" class="text-danger" /></small>
+            </div>
+            <div class="form-floating mb-3">
+                <InputDate id="InvoiceDate" @bind-Value="Input.InvoiceDate" class="form-control" />
+                <label for="InvoiceDate" class="form-label">Invoice Date</label>
+                <small><ValidationMessage For="() => Input.InvoiceDate" class="text-danger" /></small>
+            </div>
+        </BodyTemplate>
+        <FooterTemplate>
+            <Button Type="ButtonType.Submit" Color="ButtonColor.Primary" Class="@(Data is null ? "btn-action" : "")">
+                @(Data is null ? "Create" : "Save changes")
+            </Button>
+            <div class="flex-grow-1" />
+            <Button @onclick="OnHideModal" Color="ButtonColor.Secondary" Class="btn-action">Cancel</Button>
+        </FooterTemplate>
+    </Modal>
+</EditForm>
+
+@code {
+    private Modal modal = default!;
+
+    [Parameter]
+    public Project Data { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback<ProjectDTO> OnPush { get; set; }
+
+    [SupplyParameterFromForm]
+    private ProjectDTO Input { get; set; } = new();
+
+    public List<ApplicationUser> OperationUsers { get; set; } = new();
+    public List<Client> Clients { get; set; } = new();
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        if (Data is not null && string.IsNullOrEmpty(Input.Name))
+        {
+            Input = new()
+                {
+                    Number = Data.Number,
+                    Name = Data.Name,
+                    ClientId = Data.ClientId,
+                    Client = Data.Client,
+                    OperationUserId = Data.OperationUserId,
+                    OperationUser = Data.OperationUser,
+                    Date = Data.Date,
+                    DueDate = Data.DueDate,
+                    InvoiceDate = Data.InvoiceDate,
+                };
+        }
+        else
+        {
+            if (string.IsNullOrEmpty(Input.Name))
+            {
+                Input = new();
+            }
+        }
+    }
+
+    private void CreateClient(ClientDTO model)
+    {
+        Client client = new()
+            {
+                Name = model.Name,
+                Position = model.Position,
+                Email = model.Email,
+                PhoneNumber = model.PhoneNumber,
+            };
+
+        Clients.Add(client);
+        Input.ClientId = client.Id;
+        Input.Client = client;
+    }
+
+    private async Task OnValidSubmitAsync()
+    {
+        bool isExist = await ClientRepo.GetTotalCountAsync(filter: p => p.Id.Equals(Input.ClientId)) > 0;
+
+        if (isExist)
+        {
+            Input.Client = Clients.FirstOrDefault(p => p.Id.Equals(Input.ClientId));
+        }
+        else
+        {
+            await ClientRepo.CreateAsync(Input.Client);
+            Clients.Add(Input.Client);
+        }
+
+        Input.OperationUser = OperationUsers.FirstOrDefault(p => p.Id.Equals(Input.OperationUserId));
+
+        await OnPush.InvokeAsync(Input);
+        await OnHideModal();
+
+        @if (Data is null)
+        {
+            Input = new();
+        }
+    }
+
+    private async Task OnShowModal()
+    {
+        OperationUsers = await UserManager.GetUsersInRoleAsync(SD.Role_OperationManager) as List<ApplicationUser>;
+        Clients = await ClientRepo.GetAllAsync() ?? new();
+        await modal.ShowAsync();
+    }
+
+    private async Task OnHideModal() => await modal.HideAsync();
+}

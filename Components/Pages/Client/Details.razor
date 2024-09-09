@@ -1,0 +1,172 @@
+﻿@page "/management/client"
+
+@rendermode InteractiveServer
+
+@inject IClientRepository ClientRepo
+@inject NavigationManager NavManager
+
+@attribute [Authorize(Roles = SD.Role_Admin)]
+
+<PageTitle>Client Details - Zing</PageTitle>
+
+@if (Client is null)
+{
+    <div class="d-flex flex-column justify-content-center align-items-center h-100">
+        <Spinner Type="SpinnerType.Dots" Color="SpinnerColor.Primary" Size="SpinnerSize.Large" />
+    </div>
+}
+else
+{
+    <div class="row">
+        <div class="col">
+            <HeadingTitle Title="Client Details"></HeadingTitle>
+        </div>
+        <div class="col-auto align-content-center">
+            <div class="d-flex">
+                @if (!Client.Projects.Any())
+                {
+                    <ActionConfirmation OnEventCB="Delete"
+                                        IconName="bi-trash-fill"
+                                        ButtonClass="btn-header-sm mx-2"
+                                        DialogTitle="Confirm Action"
+                                        DialogMessage1="Are you sure you want to delete this client?"
+                                        DialogMessage2="Please confirm to proceed.">
+                    </ActionConfirmation>
+                }
+                <ClientManager OnPush="UpdateClientAsync" Data="Client"></ClientManager>
+            </div>
+            <br />
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-6">
+            <Card Class="shadow-sm">
+                <CardHeader>
+                    <CardTitle Class="fw-bold m-0">INFORMATION</CardTitle>
+                </CardHeader>
+                <CardBody>
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <DetailCard Title="Name" Detail="@Client.Name"></DetailCard>
+                        </div>
+                        <div class="col-6">
+                            <DetailCard Title="Position" Detail="@Client.Position"></DetailCard>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <DetailCard Title="Email" Detail="@Client.Email"></DetailCard>
+                        </div>
+                        <div class="col-6">
+                            <DetailCard Title="Phone Number" Detail="@Client.PhoneNumber"></DetailCard>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-6">
+                            <DetailCard Title="Time Created" Detail="@Client.Date.ToString()"></DetailCard>
+                        </div>
+                        <div class="col-6">
+                        </div>
+                    </div>
+                </CardBody>
+            </Card>
+            <br />
+        </div>
+        <div class="col-md-6">
+            <Card Class="shadow-sm">
+                <CardHeader>
+                    <CardTitle Class="fw-bold m-0">STATS</CardTitle>
+                </CardHeader>
+                <CardBody>
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <DetailCard Title="Projects Total" Detail=""></DetailCard>
+                        </div>
+                        <div class="col-6">
+                            <DetailCard Title="Margin" Detail=""></DetailCard>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-6">
+                            <DetailCard Title="Margin" Detail=""></DetailCard>
+                        </div>
+                        <div class="col-6">
+                            <DetailCard Title="Phone Number" Detail=""></DetailCard>
+                        </div>
+                    </div>
+                </CardBody>
+            </Card>
+            <br />
+        </div>
+    </div>
+    <Card Class="shadow-sm">
+        <CardHeader>
+            <CardTitle Class="fw-bold m-0">PROJECTS</CardTitle>
+        </CardHeader>
+        <CardBody>
+            <ProjectsGrider Data="Client.Projects.ToList()"></ProjectsGrider>
+        </CardBody>
+    </Card>
+}
+
+@code {
+    [Inject] protected ToastService ToastService { get; set; } = default!;
+
+    [SupplyParameterFromQuery]
+    public string Id { get; set; }
+
+    private Client Client { get; set; }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+
+        if (string.IsNullOrEmpty(this.Id))
+        {
+            NavManager.NavigateTo("management/clients");
+        }
+        else
+        {
+            Client = await ClientRepo.GetAsync(filter: f => f.Id == this.Id, includeProperties: "Projects.User,Projects.OperationUser");
+
+            if (Client is null)
+            {
+                NavManager.NavigateTo("notfound");
+            }
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task UpdateClientAsync(ClientDTO model)
+    {
+        try
+        {
+            if (model != null)
+            {
+                Client.Name = model.Name;
+                Client.Position = model.Position;
+                Client.Email = model.Email;
+                Client.PhoneNumber = model.PhoneNumber;
+
+                await ClientRepo.UpdateAsync(Client);
+
+                ToastService.Notify(new(ToastType.Success, "Action Successful", $"Client details was updated successfully."));
+            }
+        }
+        catch (Exception ex)
+        {
+            // handle exception
+            Console.WriteLine($"An error occurred: {ex.Message}");
+            ToastService.Notify(new(ToastType.Danger, $"Error: {ex.Message}."));
+        }
+    }
+
+    private async Task Delete()
+    {
+        await ClientRepo.RemoveAsync(Client);
+        NavManager.NavigateTo("management/clients");
+    }
+
+}

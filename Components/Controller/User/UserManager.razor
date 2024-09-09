@@ -1,0 +1,222 @@
+﻿@if (Data is not null)
+{
+    <Button @onclick="OnShowModal" Color="ButtonColor.Warning" Class="btn-header-lg">
+        <Icon Name="IconName.PencilSquare" />
+        Edit
+    </Button>
+}
+else
+{
+    <Button @onclick="OnShowModal" Color="ButtonColor.Primary" Class="btn-header-lg">
+        <Icon Name="IconName.PersonPlusFill" />
+        Create User
+    </Button>
+}
+
+<EditForm autocomplete="off" method="post" Model="Input" OnValidSubmit="OnValidSubmitAsync">
+    <DataAnnotationsValidator />
+    <Modal @ref="modal" Title="@((Data is null) ? "Create User" : "Edit User")" IsScrollable="true" UseStaticBackdrop="true" IsVerticallyCentered="true" Size="ModalSize.Large" Fullscreen="ModalFullscreen.SmallDown">
+        <BodyTemplate>
+            <div class="row">
+                <div class="col-4 align-content-center">
+                    <div class="fw-bold user-select-none">
+                        Personal Information
+                    </div>
+                </div>
+                <div class="col-8">
+                    <div class="row">
+                        <div class="col-6">
+                            <div class="form-floating mb-3">
+                                <InputText @bind-Value="Input.FirstName" class="form-control" placeholder="" />
+                                <label class="form-label">First Name</label>
+                                <small><ValidationMessage For="() => Input.FirstName" class="text-danger" /></small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="form-floating mb-3">
+                                <InputText @bind-Value="Input.LastName" class="form-control" placeholder="" />
+                                <label class="form-label">Last Name</label>
+                                <small><ValidationMessage For="() => Input.LastName" class="text-danger" /></small>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="form-floating">
+                                <InputText @bind-Value="Input.PhoneNumber" class="form-control" placeholder="" />
+                                <label class="form-label">Phone Number</label>
+                                <small><ValidationMessage For="() => Input.PhoneNumber" class="text-danger" /></small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <hr />
+            <div class="row">
+                <div class="col-4 align-content-center">
+                    <div class="fw-bold user-select-none">
+                        Account
+                    </div>
+                </div>
+                <div class="col-8">
+                    <div class="form-floating">
+                        <InputText @bind-Value="Input.Email" class="form-control" placeholder="" />
+                        <label class="form-label">Email</label>
+                        <small><ValidationMessage For="() => Input.Email" class="text-danger" /></small>
+                    </div>
+                    @if (Data is not null)
+                    {
+                        <input type="hidden" value="@Input.Password" />
+                        <input type="hidden" value="@Input.ConfirmPassword" />
+                    }
+                    else
+                    {
+                        <div class="row">
+                            <div class="col-sm-6">
+                                <div class="form-floating mt-3">
+                                    <InputText type="password" @bind-Value="Input.Password" class="form-control" placeholder="" />
+                                    <label class="form-label">Password</label>
+                                    <small><ValidationMessage For="() => Input.Password" class="text-danger" /></small>
+                                </div>
+                            </div>
+                            <div class="col-sm-6">
+
+                                <div class="form-floating mt-3">
+                                    <InputText type="password" @bind-Value="Input.ConfirmPassword" class="form-control" placeholder="" />
+                                    <label class="form-label">Confirm Password</label>
+                                    <small><ValidationMessage For="() => Input.ConfirmPassword" class="text-danger" /></small>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+            <hr />
+            <div class="row">
+                <div class="col-4 align-content-center">
+                    <div class="fw-bold user-select-none">
+                        Roles
+                    </div>
+                </div>
+                <div class="col-8">
+                    <ul class="list-group">
+                        @foreach (var role in Input.Roles)
+                        {
+                            <li class="list-group-item">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" checked="@role.Selected" @onchange="(e) => OnRoleChange(role, e)" type="checkbox" id="@role.Name" />
+                                    <label class="form-check-label" for="@role.Name">@role.Name</label>
+                                </div>
+                            </li>
+                        }
+                    </ul>
+                    @if (IsSubmitFailed)
+                    {
+                        <small><span class="text-danger">Please ensure that at least one role is selected to proceed.</span></small>
+                    }
+                </div>
+            </div>
+        </BodyTemplate>
+        <FooterTemplate>
+            <Button Type="ButtonType.Submit" Color="ButtonColor.Primary" Class="@(Data is null ? "btn-action" : "")">
+                @(Data is null ? "Create" : "Save changes")
+            </Button>
+            <div class="flex-grow-1" />
+            <Button @onclick="OnHideModal" Color="ButtonColor.Secondary" Class="btn-action">Cancel</Button>
+        </FooterTemplate>
+    </Modal>
+</EditForm>
+
+@code {
+    private Modal modal = default!;
+
+    [Parameter]
+    public ApplicationUser Data { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback<UserDTO> OnPush { get; set; }
+
+    [SupplyParameterFromForm]
+    private UserDTO Input { get; set; } = new();
+
+    private List<RoleModel> RolesStore = new()
+    {
+        new RoleModel { Name = SD.Role_ClientService, Selected = false },
+        new RoleModel { Name = SD.Role_OperationManager, Selected = false },
+        new RoleModel { Name = SD.Role_Accountant, Selected = false },
+        new RoleModel { Name = SD.Role_Manager, Selected = false }
+    };
+
+    private bool IsSubmitFailed { get; set; } = false;
+
+    protected override void OnParametersSet()
+    {
+        if (Data is not null && string.IsNullOrEmpty(Input.Email))
+        {
+            Input = new()
+                {
+                    FirstName = Data.FirstName,
+                    LastName = Data.LastName,
+                    Email = Data.Email,
+                    PhoneNumber = Data.PhoneNumber,
+                    Password = Data.PasswordHash,
+                    ConfirmPassword = Data.PasswordHash,
+                    Roles = RolesStore.Select(role => new RoleModel
+                    {
+                        Name = role.Name,
+                        Selected = role.Selected
+                    }).ToList()
+                };
+
+            // Use LINQ to select roles based on Data.Roles
+            var rolesToSelect = new HashSet<string>(Data.Roles);
+            Input.Roles.ForEach(role => role.Selected = rolesToSelect.Contains(role.Name));
+        }
+        else
+        {
+            if (string.IsNullOrEmpty(Input.Email))
+            {
+                Input.Roles = RolesStore.Select(role => new RoleModel
+                    {
+                        Name = role.Name,
+                        Selected = role.Selected
+                    }).ToList();
+            }
+        }
+    }
+
+    private void OnRoleChange(RoleModel role, ChangeEventArgs e)
+    {
+        role.Selected = (bool)e.Value;
+        IsSubmitFailed = false;
+    }
+
+    private async Task OnValidSubmitAsync()
+    {
+        if (Input.Roles.Any(p => p.Selected == true))
+        {
+            await OnPush.InvokeAsync(Input);
+            await OnHideModal();
+            ResetVariables();
+        }
+        else
+        {
+            IsSubmitFailed = true;
+        }
+    }
+
+    private void ResetVariables()
+    {
+        Input = new()
+            {
+                Roles = RolesStore.Select(role => new RoleModel
+                {
+                    Name = role.Name,
+                    Selected = role.Selected
+                }).ToList()
+            };
+
+        IsSubmitFailed = false;
+    }
+
+    private async Task OnShowModal() => await modal.ShowAsync();
+    private async Task OnHideModal() => await modal.HideAsync();
+}

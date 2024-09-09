@@ -8,9 +8,13 @@ namespace ZingCRM_Demo.Models
     {
         public string FirstName { get; set; }
         public string LastName { get; set; }
-        public DateTime CreatedAt { get; set; }
+        public DateTime TimeCreated { get; set; }
         public DateTime? LastLogin { get; set; }
+
+        [InverseProperty("User")]
+        public virtual ICollection<Project> Projects { get; set; }  // One to many
+
         [NotMapped]
-        public string Role { get; set; }
+        public List<string> Roles { get; set; }
     }
 }

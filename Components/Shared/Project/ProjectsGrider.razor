@@ -1,0 +1,87 @@
+﻿@inject IJSRuntime JS
+
+@if (Data is not null)
+{
+    <Grid TItem="ProjectVM"
+          Class="table table-hover table-bordered table-striped"
+          Data="DataVM"
+          AllowSorting="true"
+          AllowPaging="true"
+          PageSize="10"
+          AutoHidePaging="true"
+          AllowRowClick="true"
+          OnRowDoubleClick="OnRowDoubleClick"
+          AllowFiltering="true"
+          Responsive="true">
+
+        <GridColumns>
+            <GridColumn TItem="ProjectVM" HeaderText="AC #" SortKeySelector="item => item.ACNumber" PropertyName="Number" TextNoWrap="true">
+                @context.ACNumber
+            </GridColumn>
+            <GridColumn TItem="ProjectVM" HeaderText="Project" SortKeySelector="item => item.Name" PropertyName="Name" TextNoWrap="true">
+                @context.Name
+            </GridColumn>
+            <GridColumn TItem="ProjectVM" HeaderText="Client" SortKeySelector="item => item.Client" PropertyName="Client" TextNoWrap="true">
+                @context.Client
+            </GridColumn>
+            <GridColumn TItem="ProjectVM" HeaderText="CS Manager" SortKeySelector="item => item.CSManager" TextNoWrap="true">
+                @context.CSManager
+            </GridColumn>
+            <GridColumn TItem="ProjectVM" HeaderText="OPS Manager" SortKeySelector="item => item.OPSManager" TextNoWrap="true">
+                @context.OPSManager
+            </GridColumn>
+            <GridColumn TItem="ProjectVM" HeaderText="Time Created" SortKeySelector="item => item.Date" PropertyName="Date" FilterTextboxWidth="140" TextNoWrap="true">
+                @context.Date
+            </GridColumn>
+            <GridColumn TItem="ProjectVM" HeaderText="Due Date" SortKeySelector="item => item.DueDate" PropertyName="DueDate" FilterTextboxWidth="140" TextNoWrap="true">
+                @context.DueDate
+            </GridColumn>
+            <GridColumn TItem="ProjectVM" HeaderText="Workflow Stage" SortKeySelector="item => item.Phase" PropertyName="Phase" TextNoWrap="true">
+                @context.Phase
+            </GridColumn>
+        </GridColumns>
+    </Grid>
+}
+
+@code {
+    [Parameter]
+    public List<Project> Data { get; set; } = default!;
+
+    private List<ProjectVM> DataVM { get; set; } = new();
+
+    protected override void OnParametersSet()
+    {
+        if (Data is not null)
+        {
+            DataVM = Data.Select(item => new ProjectVM
+                {
+                    Id = item.Id,
+                    ACNumber = item.Number,
+                    Name = item.Name,
+                    CSManager = $"{item.User.FirstName} {item.User.LastName}",
+                    OPSManager = $"{item.OperationUser.FirstName} {item.OperationUser.LastName}",
+                    Client = item.Client.Name,
+                    Date = DateOnly.FromDateTime(item.Date),
+                    DueDate = item.DueDate,
+                    Phase = item.Phase,
+                    Status = item.Status
+                }).ToList();
+        }
+    }
+
+    private async Task OnRowDoubleClick(GridRowEventArgs<ProjectVM> args) => await JS.InvokeVoidAsync("openInNewTab", $"/project?id={args.Item.Id}");
+
+    private sealed class ProjectVM
+    {
+        public int Id { get; set; }
+        public int ACNumber { get; set; }
+        public string Name { get; set; }
+        public string Client { get; set; }
+        public string CSManager { get; set; }
+        public string OPSManager { get; set; }
+        public string Phase { get; set; }
+        public string Status { get; set; }
+        public DateOnly Date { get; set; }
+        public DateOnly DueDate { get; set; }
+    }
+}

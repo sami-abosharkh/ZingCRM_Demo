@@ -8,6 +8,13 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Components\Shared\Quotation Items\**" />
+    <Content Remove="Components\Shared\Quotation Items\**" />
+    <EmbeddedResource Remove="Components\Shared\Quotation Items\**" />
+    <None Remove="Components\Shared\Quotation Items\**" />
+  </ItemGroup>
+
+  <ItemGroup>
 <PackageReference Include="Blazor.Bootstrap" Version="3.0.0" />
 <PackageReference Include="Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore" Version="8.0.8" />
 <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="8.0.8" />
@@ -16,6 +23,10 @@
   <PrivateAssets>all</PrivateAssets>
   <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="wwwroot\asset\" />
   </ItemGroup>
 
 </Project>

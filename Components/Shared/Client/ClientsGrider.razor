@@ -1,0 +1,38 @@
+﻿@inject IJSRuntime JS
+
+<Grid TItem="Client"
+      Class="table table-hover table-bordered table-striped"
+      Data="Data"
+      OnRowDoubleClick="OnRowDoubleClick"
+      AllowRowClick="true"
+      AllowSorting="true"
+      AllowPaging="true"
+      AutoHidePaging="true"
+      PageSize="20"
+      Responsive="true">
+
+    <GridColumns>
+        <GridColumn TItem="Client" HeaderText="Name" SortKeySelector="item => item.Name">
+            @context.Name
+        </GridColumn>
+        <GridColumn TItem="Client" HeaderText="Email" SortKeySelector="item => item.Email">
+            @context.Email
+        </GridColumn>
+        <GridColumn TItem="Client" HeaderText="Phone Number" SortKeySelector="item => item.PhoneNumber">
+            @context.PhoneNumber
+        </GridColumn>
+        <GridColumn TItem="Client" HeaderText="Position" SortKeySelector="item => item.Position">
+            @context.Position
+        </GridColumn>
+        <GridColumn TItem="Client" HeaderText="Projects Total" SortKeySelector="item => item.ProjectsTotal">
+            @context.ProjectsTotal.ToString("N0")
+        </GridColumn>
+    </GridColumns>
+</Grid>
+
+@code {
+    [Parameter]
+    public List<Client> Data { get; set; } = default!;
+
+    private async Task OnRowDoubleClick(GridRowEventArgs<Client> args) => await JS.InvokeVoidAsync("openInNewTab", $"/management/client?id={args.Item.Id}");
+}

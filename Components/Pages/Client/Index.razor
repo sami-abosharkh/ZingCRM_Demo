@@ -1,0 +1,88 @@
+﻿@page "/management/clients"
+
+@rendermode InteractiveServer
+
+@inject NavigationManager NavManager
+@inject IClientRepository ClientRepo
+@inject IProjectRepository ProjectRepo
+
+@attribute [StreamRendering]
+@attribute [Authorize(Roles = SD.Role_Admin)]
+
+<PageTitle>Clients Management - Zing</PageTitle>
+
+<div class="row">
+    <div class="col">
+        <HeadingTitle Title="CLIENTS MANAGEMENT"></HeadingTitle>
+    </div>
+    <div class="col-auto align-content-center">
+        <div class="d-flex">
+            <ClientManager OnPush="CreateClientAsync"></ClientManager>
+        </div>
+        <br />
+    </div>
+</div>
+
+@if (Clients is null)
+{
+    <div class="d-flex flex-column justify-content-center align-items-center h-100">
+        <Spinner Type="SpinnerType.Dots" Color="SpinnerColor.Primary" Size="SpinnerSize.Large" />
+    </div>
+}
+else
+{
+    <ClientsGrider Data="Clients.ToList()"></ClientsGrider>
+}
+@code {
+    [Inject] protected ToastService ToastService { get; set; } = default!;
+
+    List<Client> Clients = default!;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        await GetClients();
+    }
+
+    public async Task GetClients()
+    {
+        Clients = await ClientRepo.GetAllAsync() ?? new();
+
+        foreach (var client in Clients)
+        {
+            client.ProjectsTotal = await ProjectRepo.GetTotalCountAsync(filter: p => p.ClientId.Equals(client.Id));
+        }
+
+        StateHasChanged();
+    }
+
+
+    public async Task CreateClientAsync(ClientDTO model)
+    {
+        try
+        {
+            if (model != null)
+            {
+                Client client = new()
+                    {
+                        Id = Guid.NewGuid().ToString(),
+                        Name = model.Name,
+                        Position = model.Position,
+                        Email = model.Email,
+                        PhoneNumber = model.PhoneNumber,
+                        Date = DateOnly.FromDateTime(DateTime.Now),
+                    };
+
+                await ClientRepo.CreateAsync(client);
+                ToastService.Notify(new(ToastType.Success, "Action Successful", $"Client was created successfully."));
+                await GetClients();
+            }
+        }
+        catch (Exception ex)
+        {
+            // handle exception
+            Console.WriteLine($"An error occurred: {ex.Message}");
+            ToastService.Notify(new(ToastType.Danger, $"Error: {ex.Message}."));
+        }
+    }
+}

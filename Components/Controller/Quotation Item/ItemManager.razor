@@ -1,0 +1,252 @@
+﻿@using System.ComponentModel.DataAnnotations
+@inject ICategoryRepository CategoryRepo
+
+@if (Data.Any())
+{
+    <Button @onclick="OnShowModal" Color="ButtonColor.Warning" Class="btn-header-sm">
+        <Icon Name="IconName.PencilSquare" />
+        Edit
+    </Button>
+}
+else
+{
+    <Button @onclick="OnShowModal" Color="ButtonColor.Primary" Class="btn-header-lg">
+        <Icon Name="IconName.PencilSquare" />
+        Add Quotable Items
+    </Button>
+}
+
+<Modal @ref="modal" Title="Quotable Items Manager" IsScrollable="true" UseStaticBackdrop="true" IsVerticallyCentered="true" Size="ModalSize.ExtraLarge" Fullscreen="ModalFullscreen.LargeDown">
+    <BodyTemplate>
+        <div class="row">
+            <div class="col-xl-4">
+                <Card Class="shadow-sm">
+                    <CardHeader>
+                        <CardTitle Class="fw-bold user-select-none m-0">ADD ITEM</CardTitle>
+                    </CardHeader>
+                    <CardBody>
+                        <EditForm method="post" autocomplete="off" Model="Input" OnValidSubmit="OnInsertItem">
+                            <DataAnnotationsValidator />
+                            <div class="form-floating mb-3">
+                                <select class="form-select" @onchange="OnCategoryChange">
+                                    <option selected disabled>Select Category</option>
+                                    @foreach (var item in Categories)
+                                    {
+                                        <option title="@item.Description" value="@item.Name">@item.Name</option>
+                                    }
+                                </select>
+                                <label class="form-label">Category</label>
+                                <small><ValidationMessage For="() => Input.Category" class="text-danger" /></small>
+                            </div>
+                            @if (string.IsNullOrEmpty(Input.Category))
+                            {
+                                <div class="form-floating mb-3">
+                                    <select class="form-select" disabled>
+                                        <option selected disabled>Select Item</option>
+                                    </select>
+                                    <label class="form-label">Item</label>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="form-floating mb-3">
+                                    <InputSelect class="form-select" @bind-Value="Input.Name">
+                                        <option selected disabled>Select Item</option>
+                                        @foreach (var item in Items)
+                                        {
+                                            <option value="@item.Name">@item.Name</option>
+                                        }
+                                    </InputSelect>
+                                    <label class="form-label">Item</label>
+                                    <small><ValidationMessage For="() => Input.Name" class="text-danger" /></small>
+                                </div>
+                            }
+                            @if (string.IsNullOrEmpty(Input.Name))
+                            {
+                                <div class="form-floating mb-3">
+                                    <input type="number" class="form-control" placeholder="" disabled />
+                                    <label class="form-label">Quantity</label>
+                                </div>
+                                <div class="form-floating mb-3">
+                                    <textarea class="form-control" placeholder="" style="height: 200px" disabled />
+                                    <label class="form-label">Description</label>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="form-floating mb-3">
+                                    <InputNumber min="1" @bind-Value="Input.Quantity" class="form-control" placeholder="" />
+                                    <label class="form-label">Quantity</label>
+                                    <small><ValidationMessage For="() => Input.Quantity" class="text-danger" /></small>
+                                </div>
+                                <div class="form-floating mb-3">
+                                    <InputTextArea @bind-Value="Input.Description" class="form-control" placeholder="" style="height: 200px" />
+                                    <label class="form-label">Description</label>
+                                    <small><ValidationMessage For="() => Input.Description" class="text-danger" /></small>
+                                </div>
+                            }
+                            <div class="row">
+                                <div class="col">
+                                    <Button Type="ButtonType.Submit" Color="ButtonColor.Secondary" Class="w-100">
+                                        <Icon Name="IconName.PlusLg" />
+                                        Insert Item
+                                    </Button>
+                                </div>
+                            </div>
+                        </EditForm>
+                    </CardBody>
+                </Card>
+            </div>
+            <div class="col-xl-8">
+                <Card Class="shadow-sm">
+                    <CardHeader>
+                        <CardTitle Class="fw-bold user-select-none m-0">QUOTABLE ITEMS</CardTitle>
+                    </CardHeader>
+                    <CardBody>
+                        <table class="table table-bordered table-striped table-hover table-responsive align-middle text-center m-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th scope="col">#</th>
+                                    <th scope="col">Category</th>
+                                    <th scope="col" style="min-width: 150px;">Name</th>
+                                    <th scope="col" style="width: 100px;">Quantity</th>
+                                    <th scope="col" width="10">Action</th>
+                                </tr>
+                            </thead>
+                            @if (Data.Any())
+                            {
+                                <tbody>
+                                    @foreach (var item in Data)
+                                    {
+                                        <tr>
+                                            <td scope="row" class="fw-bold">@(Data.IndexOf(item) + 1)</td>
+                                            <td>
+                                                <Tooltip Class="px-2" Title="@item.Item.Category.Description" Placement="TooltipPlacement.Right">@item.Item.Category.Name</Tooltip>
+                                            </td>
+                                            <td>
+                                                <Tooltip Class="px-2" Title="@item.Description" Placement="TooltipPlacement.Right">@item.Item.Name</Tooltip>
+                                            </td>
+                                            <td>
+                                                <input type="number" class="form-control" @bind-value="item.Quantity" placeholder="Quantity" aria-label="Quantity">
+                                            </td>
+                                            <td>
+                                                <ActionConfirmation OnEventCB="() => OnRemove(item)"
+                                                                    IconName="bi-trash"
+                                                                    DialogTitle="Remove Item"
+                                                                    DialogMessage1="Are you sure you want to remove this item?"
+                                                                    DialogMessage2="Do you want to proceed?">
+                                                </ActionConfirmation>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            }
+                            else
+                            {
+                                <EmptyTable Size="5"></EmptyTable>
+                            }
+                        </table>
+                    </CardBody>
+                </Card>
+                @if (IsSubmitFailed)
+                {
+                    <Alert Color="AlertColor.Danger" Class="mt-3 mb-0">
+                        <Icon Name="IconName.ExclamationTriangleFill" Class="me-2"></Icon>
+                        To proceed, please ensure that costs are entered for all items.
+                    </Alert>
+                }
+            </div>
+        </div>
+    </BodyTemplate>
+    <FooterTemplate>
+        <Button @onclick="OnValidSubmitAsync" Color="ButtonColor.Primary">Save changes</Button>
+        <div class="flex-grow-1" />
+        <Button @onclick="OnHideModal" Color="ButtonColor.Secondary" Class="btn-action">Cancel</Button>
+    </FooterTemplate>
+</Modal>
+
+@code {
+    private Modal modal = default!;
+
+    [Parameter]
+    public List<QuotationItem> Data { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback<List<QuotationItem>> OnPush { get; set; }
+
+    [SupplyParameterFromForm]
+    private InputModel Input { get; set; } = new();
+
+    public List<Category> Categories { get; set; } = default!;
+    public List<Item> Items { get; set; } = default!;
+
+    private bool IsSubmitFailed { get; set; } = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        Categories = await CategoryRepo.GetAllAsync(includeProperties: "Items");
+    }
+
+    private void OnCategoryChange(ChangeEventArgs e)
+    {
+        Input.Category = e.Value.ToString();
+        Items = Categories.FirstOrDefault(item => item.Name.Equals(Input.Category)).Items.ToList();
+    }
+
+    private void OnInsertItem()
+    {
+        Item selectedItem = Items.FirstOrDefault(item => item.Name.Equals(Input.Name) && item.Category.Name.Equals(Input.Category));
+
+        QuotationItem entity = new()
+            {
+                Item = selectedItem,
+                ItemId = selectedItem.Id,
+                Quantity = Input.Quantity.Value,
+                Description = Input.Description,
+            };
+
+        Data.Add(entity);
+
+        Input = new();
+        IsSubmitFailed = false;
+    }
+
+    private async Task OnValidSubmitAsync()
+    {
+        if (Data.Any())
+        {
+            await OnPush.InvokeAsync(Data);
+            await OnHideModal();
+        }
+        else
+        {
+            IsSubmitFailed = true;
+        }
+    }
+
+    private void OnRemove(QuotationItem entity) => Data.Remove(entity);
+
+    private async Task OnShowModal() => await modal.ShowAsync();
+    private async Task OnHideModal() => await modal.HideAsync();
+
+    private sealed class InputModel
+    {
+        [Required]
+        [StringLength(255)]
+        public string Name { get; set; }
+
+        [Required]
+        [StringLength(255)]
+        public string Category { get; set; }
+
+        [Required]
+        [Range(1, int.MaxValue, ErrorMessage = "Quantity must be greater than zero.")]
+        public int? Quantity { get; set; } = 5;
+
+        [Required]
+        [StringLength(255)]
+        public string Description { get; set; } = "Cras rhoncus ante et neque scelerisque, eget tincidunt velit dignissim. Aenean id elit viverra neque dapibus consectetur a sed nulla. Quisque vitae laoreet leo.";
+    }
+}

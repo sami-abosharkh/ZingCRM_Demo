@@ -1,8 +1,100 @@
 html, body {
-    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-family: Arial, Helvetica, sans-serif;
     height: 100%;
     margin: 0;
     padding: 0;
+}
+
+.text-justify {
+    text-align: justify;
+}
+
+.multi-line-truncate {
+    display: -webkit-box; /* Required for multi-line truncation */
+    -webkit-line-clamp: 2; /* Number of lines to display before truncating */
+    -webkit-box-orient: vertical; /* Required for multi-line truncation */
+    overflow: hidden; /* Ensures content is hidden once it exceeds the line clamp */
+}
+
+.breadcrumbs {
+    border: 1px solid #cbd2d9;
+    border-radius: 0.3rem;
+    overflow: hidden;
+    width: 100%;
+}
+
+.breadcrumbs-item {
+    display: inline-flex;
+    justify-content: center;
+    width: 100%;
+    height: 80px;
+    background: #fff;
+    text-align: center;
+    text-transform: uppercase;
+    font-size: 0.8em;
+    padding: 0em 0.5em 0em 1em;
+    position: relative;
+    transition: background 0.2s linear;
+}
+
+    .breadcrumbs-item span {
+        align-self: center;
+    }
+
+    .breadcrumbs-item:after,
+    .breadcrumbs-item:before {
+        content: "";
+        background: white;
+        position: absolute;
+        left: 100%;
+        bottom: 0;
+        top: 0;
+        clip-path: polygon(50% 50%, -50% -50%, 0 100%);
+        transition: background 0.2s linear;
+        width: 1em;
+        z-index: 1;
+    }
+
+    .breadcrumbs-item:last-child {
+        border-right: none;
+        padding: 0em 0.4em 0em 0.8em;
+    }
+
+    .breadcrumbs-item:before {
+        background: #cbd2d9;
+    }
+
+    .breadcrumbs-item.is-active,
+    .breadcrumbs-item.is-active:after {
+        background-color: #f15b2a;
+        color: white;
+        font-weight: 600;
+    }
+
+    .breadcrumbs-item:hover,
+    .breadcrumbs-item:hover:after {
+        background: #edf1f5;
+    }
+
+    .breadcrumbs-item.is-active:hover,
+    .breadcrumbs-item.is-active:hover:after {
+        background-color: #d94e24;
+    }
+
+.btn-header-lg {
+    width: 200px;
+    height: 65px;
+    align-content: center;
+}
+
+.btn-header-sm {
+    width: 100px;
+    height: 65px;
+    align-content: center;
+}
+
+.btn-action{
+    width: 100px;
 }
 
 .valid.modified:not([type=checkbox]) {
@@ -29,4 +121,11 @@ html, body {
 
 .darker-border-checkbox.form-check-input {
     border-color: #929292;
+}
+
+@media (max-width:767px) {
+    .breadcrumbs-item {
+        height: 80px;
+        padding: 0;
+    }
 }

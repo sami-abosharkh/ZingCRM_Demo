@@ -1,0 +1,138 @@
+﻿@if (Data is not null)
+{
+    @if (Data.All(item => item.Cost.HasValue))
+    {
+        <Button @onclick="OnShowModal" Color="ButtonColor.Warning" Class="btn-header-sm mx-2">
+            <Icon Name="IconName.PencilSquare" />
+            Edit
+        </Button>
+    }
+    else
+    {
+        <Button @onclick="OnShowModal" Color="ButtonColor.Primary" Class="btn-header-lg ms-2">
+            <Icon Name="IconName.PencilSquare" />
+            Estimate Costs
+        </Button>
+    }
+
+    <Modal @ref="modal" Title="Cost Estimation" IsScrollable="true" UseStaticBackdrop="true" IsVerticallyCentered="true" Size="ModalSize.ExtraLarge" Fullscreen="ModalFullscreen.LargeDown">
+        <BodyTemplate>
+            <table class="table table-bordered table-hover table-responsive align-middle text-center m-0">
+                <caption class="pb-0">List of Quotable Items</caption>
+                <thead class="table-light">
+                    <tr>
+                        <th scope="col">Category</th>
+                        <th scope="col" style="min-width: 150px;">Name</th>
+                        <th scope="col">Quantity</th>
+                        <th scope="col" style="width: 200px; min-width: 150px;">Cost</th>
+                        <th scope="col">Total Cost</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in ItemsDTO)
+                    {
+                        <tr>
+                            <td>@item.Item.Category.Name</td>
+                            <td>
+                                <Tooltip Class="px-2" Title="@item.Description" Placement="TooltipPlacement.Right">@item.Item.Name</Tooltip>
+                            </td>
+                            <td>@item.Quantity</td>
+                            <td>
+                                <div class="input-group">
+                                    <input type="number" step="5" value="@item.Cost" @oninput="(e) => OnCostChanged(e, item)" class="form-control" placeholder="Insert Cost" />
+                                    <span class="input-group-text">SAR</span>
+                                </div>
+                            </td>
+                            <td class="@(item.TotalCost is not null && item.TotalCost < 0 ? "bg-warning-subtle" : "")">@item.TotalCost?.ToString("N2")</td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot>
+                    <tr class="fw-bold">
+                        <td colspan="4" class="text-start">Total</td>
+                        <td scope="col" class="@(ItemsDTO.Sum(item => item.TotalCost) < 0 ? "bg-warning-subtle" : "bg-light")">@ItemsDTO.Sum(item => item.TotalCost)?.ToString("N2")</td>
+                    </tr>
+                </tfoot>
+            </table>
+            @if (IsSubmitFailed)
+            {
+                <Alert Color="AlertColor.Danger" Class="mt-3 mb-0">
+                    <Icon Name="IconName.ExclamationTriangleFill" Class="me-2"></Icon>
+                    To proceed, please ensure that costs are entered for all items.
+                </Alert>
+            }
+        </BodyTemplate>
+        <FooterTemplate>
+            <Button @onclick="OnValidSubmitAsync" Color="ButtonColor.Primary">Save changes</Button>
+            <div class="flex-grow-1" />
+            <Button @onclick="OnHideModal" Color="ButtonColor.Secondary" Class="btn-action">Cancel</Button>
+        </FooterTemplate>
+    </Modal>
+}
+
+@code {
+    private Modal modal = default!;
+
+    [Parameter]
+    public List<QuotationItem> Data { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback<List<QuotationItemCostDTO>> OnPush { get; set; }
+
+    private List<QuotationItemCostDTO> ItemsDTO { get; set; } = default!;
+
+    private bool IsSubmitFailed { get; set; } = false;
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        if (ItemsDTO is null && Data is not null)
+        {
+            ItemsDTO = Data.Select(item => new QuotationItemCostDTO
+                {
+                    Id = item.Id,
+                    Item = item.Item,
+                    Quantity = item.Quantity,
+                    Description = item.Description,
+                    Cost = item.Cost == 0 ? null : item.Cost,
+                    TotalCost = item.Cost * item.Quantity
+                }).ToList();
+        }
+    }
+
+    private void OnCostChanged(ChangeEventArgs e, QuotationItemCostDTO item)
+    {
+        // Explicitly cast e.Value to decimal if it's not null
+        if (e.Value != null && decimal.TryParse(e.Value.ToString(), out decimal input))
+        {
+            // Update the item's Cost
+            item.Cost = input;
+            item.TotalCost = item.Cost * item.Quantity;
+            IsSubmitFailed = false;
+        }
+        else
+        {
+            // Handle the case when the input is invalid or null
+            item.Cost = null;
+            item.TotalCost = null;
+        }
+    }
+
+    // Method receives the item that was submitted
+    private async Task OnValidSubmitAsync()
+    {
+        if (ItemsDTO.All(item => item.Cost.HasValue))
+        {
+            await OnPush.InvokeAsync(ItemsDTO);
+            await OnHideModal();
+        }
+        else
+        {
+            IsSubmitFailed = true;
+        }
+    }
+
+    private async Task OnShowModal() => await modal.ShowAsync();
+    private async Task OnHideModal() => await modal.HideAsync();
+}

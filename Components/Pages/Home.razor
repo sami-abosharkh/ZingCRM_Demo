@@ -1,7 +1,49 @@
 ﻿@page "/"
 
-<PageTitle>Home</PageTitle>
+<PageTitle>Home - Zing</PageTitle>
 
-<h1>Hello, world!</h1>
-
-Welcome to your new app.
+<div class="container d-flex justify-content-center align-items-center h-100">
+    <Card Class="shadow">
+        <img class="rounded-top" src="/asset/zing-light-motif-banner.png" alt="banner" draggable="false" (dragstart)="false;" />
+        <CardBody Class="text-center p-5">
+            <div class="d-flex justify-content-center align-items-center flex-grow-1">
+                <span class="fw-bold display-1">UNDER DEVELOPMENT</span> <Spinner Type="SpinnerType.Border" Size="SpinnerSize.ExtraLarge" Class="ms-2" />
+            </div>
+        </CardBody>
+    </Card>
+</div>
+@*
+    <br />
+<h1 class="text-center fw-bold">HOME</h1>
+<hr />
+<Card Class="shadow-sm">
+    <CardBody>
+        <CardTitle Class="fw-bold m-0">DASHBOARD</CardTitle>
+        <hr class="mt-2" />
+        Stats
+    </CardBody>
+</Card>
+<br />
+<div class="row">
+    <div class="col-6">
+        <Card Class="shadow-sm">
+            <CardBody>
+                <CardTitle Class="fw-bold m-0">INBOX</CardTitle>
+                <hr class="mt-2" />
+                To-dos
+            </CardBody>
+        </Card>
+    </div>
+    <div class="col-6">
+        <Card Class="shadow-sm">
+            <CardBody>
+                <CardTitle Class="fw-bold m-0">MY PROJECTS</CardTitle>
+                <hr class="mt-2" />
+                Latest Projects
+            </CardBody>
+        </Card>
+    </div>
+</div>
+ *@
+@code {
+}

@@ -1,0 +1,47 @@
+﻿<Button @onclick="OnShowModal" Color="ButtonColor.Success" Class="btn-header-sm ms-2">
+    <Icon Name="IconName.FileEarmarkArrowDownFill" />
+    Export
+</Button>
+<Modal @ref="modal" Title="Export Quotation" IsScrollable="true" UseStaticBackdrop="true" IsVerticallyCentered="true" Size="ModalSize.ExtraLarge" Fullscreen="ModalFullscreen.LargeDown">
+    <BodyTemplate>
+        <div class="row">
+            <div class="col-8">
+                <PdfViewer Url="https://raw.githubusercontent.com/mozilla/pdf.js/ba2edeae/web/compressed.tracemonkey-pldi-09.pdf"></PdfViewer>
+            </div>
+            <div class="col-4">
+                <div class="form-floating mb-3">
+                    <input type="text" class="form-control" placeholder="" />
+                    <label class="form-label">Date</label>
+                </div>
+                <div class="form-floating mb-3">
+                    <input type="text" class="form-control" placeholder="" />
+                    <label class="form-label">Version</label>
+                </div>
+                <div class="form-floating mb-3">
+                    <textarea class="form-control" placeholder="" style="height: 200px" />
+                    <label class="form-label">Terms & Conditions</label>
+                </div>
+                <div class="form-floating mb-3">
+                    <input type="text" class="form-control" placeholder="" />
+                    <label class="form-label">Bank Details</label>
+                </div>
+                <div class="form-floating mb-3">
+                    <input type="text" class="form-control" placeholder="" />
+                    <label class="form-label">Management</label>
+                </div>
+            </div>
+        </div>
+    </BodyTemplate>
+    <FooterTemplate>
+        <Button Color="ButtonColor.Primary" Class="btn-action">Export</Button>
+        <div class="flex-grow-1" />
+        <Button @onclick="OnHideModal" Color="ButtonColor.Secondary" Class="btn-action">Cancel</Button>
+    </FooterTemplate>
+</Modal>
+
+@code {
+    private Modal modal = default!;
+
+    public async Task OnShowModal() => await modal.ShowAsync();
+    private async Task OnHideModal() => await modal.HideAsync();
+}

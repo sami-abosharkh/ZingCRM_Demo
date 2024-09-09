@@ -13,7 +13,25 @@
 @using BlazorBootstrap;
 
 @using ZingCRM_Demo.Data.Repository.Interface
-@using ZingCRM_Demo.Models
-@using ZingCRM_Demo.Utilities
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Identity
+@using System.Security.Claims
+
 @using ZingCRM_Demo.Components.Shared
-@using ZingCRM_Demo.Components.Shared.ItemComponents
+@using ZingCRM_Demo.Components.Shared.Category
+@using ZingCRM_Demo.Components.Shared.Project
+@using ZingCRM_Demo.Components.Shared.PurchaseRequisition
+@using ZingCRM_Demo.Components.Shared.Client
+@using ZingCRM_Demo.Components.Shared.User
+@using ZingCRM_Demo.Components.Shared.Quotation_Item
+
+@using ZingCRM_Demo.Components.Controller.Project
+@using ZingCRM_Demo.Components.Controller.Client
+@using ZingCRM_Demo.Components.Controller.User
+@using ZingCRM_Demo.Components.Controller.Quotation_Item
+@using ZingCRM_Demo.Components.Controller.PurchaseRequisition
+
+@using ZingCRM_Demo.Models
+@using ZingCRM_Demo.Models.DTO
+
+@using ZingCRM_Demo.Utilities

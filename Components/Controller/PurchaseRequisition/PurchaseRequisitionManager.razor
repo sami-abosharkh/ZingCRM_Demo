@@ -1,0 +1,278 @@
+﻿@if (ItemsVM.Any())
+{
+    <Button @onclick="OnShowModal" Color="ButtonColor.Primary" Class="btn-header-lg">
+        <Icon Name="IconName.PencilSquare" />
+        Requset Payments
+    </Button>
+}
+
+<Modal @ref="modal" Title="Purchase Requisition" IsScrollable="true" UseStaticBackdrop="true" IsVerticallyCentered="true" Size="ModalSize.ExtraLarge" Fullscreen="ModalFullscreen.LargeDown">
+    <BodyTemplate>
+        <Card Class="shadow-sm">
+            <CardHeader>
+                <CardTitle Class="fw-bold user-select-none m-0">QUOTABLE ITEMS</CardTitle>
+            </CardHeader>
+            <CardBody>
+                <table class="table table-bordered table-striped table-hover table-responsive align-middle text-center mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th scope="col">Category</th>
+                            <th scope="col" style="min-width: 150px;">Name</th>
+                            <th scope="col">Quantity</th>
+                            <th scope="col">Cost</th>
+                            <th scope="col">Total Cost</th>
+                            <th scope="col" style="width: 150px; min-width: 50px;">Ask Quantity</th>
+                            <th scope="col" style="width: 150px; min-width: 50px;">Ask Amount %</th>
+                            <th scope="col">Total Request</th>
+                        </tr>
+                    </thead>
+                    @if (ItemsVM.Any())
+                    {
+                        <tbody>
+                            @foreach (var item in ItemsVM)
+                            {
+                                <tr>
+                                    <td>
+                                        <Tooltip Class="px-2" Title="@item.Item.Category.Description" Placement="TooltipPlacement.Right">@item.Item.Category.Name</Tooltip>
+                                    </td>
+                                    <td>
+                                        <Tooltip Class="px-2" Title="@item.Description" Placement="TooltipPlacement.Right">@item.Item.Name</Tooltip>
+                                    </td>
+                                    <td>@(item.Quantity - item.QuantityAsk)</td>
+                                    <td>@item.Cost.ToString("N2")</td>
+                                    <td>@item.TotalCost.ToString("N2")</td>
+                                    <td>
+                                        @if (item.Quantity > 0)
+                                        {
+                                            <input type="number" min="0" max="@item.Quantity" value="@item.QuantityAsk" @oninput="(e) => OnQuantityChanged(e, item)" class="form-control" placeholder="Insert Quantity" />
+                                        }
+                                        else
+                                        {
+                                            <input type="number" value="@item.Quantity" class="form-control" disabled />
+                                        }
+                                    </td>
+                                    <td>
+                                        <input value="@item.PercentageAsk.ToString("P2")" class="form-control" placeholder="Insert Requested Precentage" disabled />
+                                    </td>
+                                    <td>@item.RequestedTotal.ToString("N2")</td>
+                                </tr>
+                            }
+                        </tbody>
+                        <tfoot>
+                            <tr class="fw-bold">
+                                <td colspan="4" class="text-start">Total</td>
+                                <td scope="col" class="bg-light">@RemainingTotal.ToString("N2")</td>
+                                <td colspan="2"></td>
+                                <td scope="col" class="bg-light">@RequestTotal.ToString("N2")</td>
+                            </tr>
+                        </tfoot>
+                    }
+                    else
+                    {
+                        <EmptyTable Size="8"></EmptyTable>
+                    }
+                </table>
+            </CardBody>
+        </Card>
+        <br />
+        <div class="row">
+            <div class="col-md-7">
+                <div class="form-floating">
+                    @if (ItemsVM.Any())
+                    {
+                        <InputTextArea @bind-Value="Input.Description" class="form-control" placeholder="" style="height: 165px" />
+                    }
+                    else
+                    {
+                        <textarea class="form-control" placeholder="" style="height: 165px" disabled />
+                    }
+
+                    <label class="form-label">Description</label>
+                </div>
+            </div>
+            <div class="col-md-5">
+                <ul class="list-group list-group-flush1">
+                    <li class="list-group-item d-flex justify-content-between"><span class="fw-bold">Total Budget</span><span>@BudgetTotal.ToString("N2")</span></li>
+                    <li class="list-group-item d-flex justify-content-between"><span class="fw-bold">Total Requested</span><span>@RequestedTotal.ToString("N2")</span></li>
+                    <li class="list-group-item d-flex justify-content-between"><span class="fw-bold">Total Remaining</span><span>@RemainingTotal.ToString("N2")</span></li>
+                    <li class="list-group-item d-flex justify-content-between"><span class="fw-bold">Total Request</span><span>@RequestTotal.ToString("N2")</span></li>
+                </ul>
+            </div>
+        </div>
+        @if (IsSubmitFailed)
+        {
+            <Alert Color="AlertColor.Danger" Class="mt-3 mb-0">
+                <Icon Name="IconName.ExclamationTriangleFill" Class="me-2"></Icon>
+                To proceed, please ensure that requested quantity or amount are entered.
+            </Alert>
+        }
+    </BodyTemplate>
+    <FooterTemplate>
+        @if (ItemsVM.Any())
+        {
+            <Button @onclick="OnValidSubmitAsync" Color="ButtonColor.Primary">Save changes</Button>
+        }
+        else
+        {
+            <Button Color="ButtonColor.Primary" Disabled="true">Save changes</Button>
+        }
+        <div class="flex-grow-1" />
+        <Button @onclick="OnHideModal" Color="ButtonColor.Secondary" Class="btn-action">Cancel</Button>
+    </FooterTemplate>
+</Modal>
+
+@code {
+    private Modal modal = default!;
+
+    [Parameter]
+    public List<QuotationItem> QuotationItems { get; set; } = default!;
+
+    [Parameter]
+    public List<PurchaseRequisition> PurchaseRequisitions { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback<PurchaseRequisitionDTO> OnPush { get; set; }
+
+    [SupplyParameterFromForm]
+    private PurchaseRequisitionDTO Input { get; set; } = new();
+
+    private List<ItemRequestedVM> ItemsVM { get; set; } = new();
+    private List<RequisitionEntry> RequisitionEntries { get; set; } = new();
+
+    private decimal BudgetTotal { get; set; }
+    private decimal RequestedTotal { get; set; }
+    private decimal RemainingTotal { get; set; }
+    private decimal RequestTotal { get; set; }
+
+    private bool IsSubmitFailed { get; set; } = false;
+
+    protected override void OnParametersSet()
+    {
+        if (QuotationItems is not null)
+        {
+            //-- Initialize ItemsVM
+            ItemsVM = QuotationItems.Select(item => new ItemRequestedVM
+                {
+                    Id = item.Id,
+                    Item = item.Item,
+                    Quantity = item.Quantity,
+                    Description = item.Description,
+                    Cost = item.Cost.Value,
+                    TotalCost = item.Cost.Value * item.Quantity,
+                }).ToList();
+
+            //-- If there are previous payment requests, adjust quantities
+            if (PurchaseRequisitions.Any())
+            {
+                foreach (var requisitionEntry in PurchaseRequisitions.SelectMany(pr => pr.RequisitionEntries))
+                {
+                    // Find the item in ItemsVM by Id
+                    ItemRequestedVM item = ItemsVM.FirstOrDefault(p => p.Id == requisitionEntry.QuotedItemId);
+
+                    if (item is not null)
+                    {
+                        item.Quantity -= requisitionEntry.Quantity;
+
+                        if (item.Quantity <= 0)
+                        {
+                            ItemsVM.Remove(item);
+                        }
+                    }
+                }
+            }
+
+            BudgetTotal = QuotationItems.Sum(p => p.Cost * p.Quantity).Value;
+            RequestedTotal = PurchaseRequisitions.Sum(p => p.RequestedAmount);
+        }
+    }
+
+    private void OnQuantityChanged(ChangeEventArgs e, ItemRequestedVM item)
+    {
+        // Explicitly parse e.Value to int if it's not null
+        if (e.Value != null && int.TryParse(e.Value.ToString(), out int input))
+        {
+            var requestedItem = RequisitionEntries.FirstOrDefault(p => p.QuotedItemId == item.Id);
+
+            if (input > 0)
+            {
+                item.QuantityAsk = input;
+                item.PercentageAsk = item.QuantityAsk / item.Quantity;
+                item.RequestedTotal = item.Cost * input; // Update the item's total amount
+
+                if (requestedItem is not null)
+                {
+                    var index = RequisitionEntries.IndexOf(requestedItem);
+                    RequisitionEntries[index].Quantity = input;
+                }
+                else
+                {
+                    RequisitionEntry newRequestedItem = new()
+                        {
+                            QuotedItemId = item.Id,
+                            Quantity = input,
+                        };
+
+                    RequisitionEntries.Add(newRequestedItem);
+                }
+            }
+            else
+            {
+                item.QuantityAsk = 0;
+                item.RequestedTotal = 0; // Update the item's total amount
+
+                if (requestedItem is not null)
+                {
+                    RequisitionEntries.Remove(requestedItem);
+                }
+            }
+
+            RefreshData();
+            IsSubmitFailed = false;
+        }
+    }
+
+    // Method receives the item that was submitted
+    private async Task OnValidSubmitAsync()
+    {
+        if (RequisitionEntries.Any())
+        {
+            Input.RequisitionEntries = RequisitionEntries.ToList();
+            Input.RequestedAmount = RequestTotal;
+
+            await OnPush.InvokeAsync(Input);
+
+            RequisitionEntries.Clear();
+            RequestTotal = 0;
+            Input = new();
+
+            await OnHideModal();
+        }
+        else
+        {
+            IsSubmitFailed = true;
+        }
+    }
+
+    private void RefreshData()
+    {
+        RequestTotal = ItemsVM.Sum(p => p.RequestedTotal);
+        RemainingTotal = BudgetTotal - (RequestedTotal + RequestTotal);
+    }
+
+    private async Task OnShowModal() => await modal.ShowAsync();
+    private async Task OnHideModal() => await modal.HideAsync();
+
+    private sealed class ItemRequestedVM
+    {
+        public int Id { get; set; }
+        public Item Item { get; set; }
+        public string Description { get; set; }
+        public double Quantity { get; set; }
+        public decimal Cost { get; set; }
+        public decimal TotalCost { get; set; }
+
+        public double QuantityAsk { get; set; }
+        public double PercentageAsk { get; set; }
+        public decimal RequestedTotal { get; set; }
+    }
+}

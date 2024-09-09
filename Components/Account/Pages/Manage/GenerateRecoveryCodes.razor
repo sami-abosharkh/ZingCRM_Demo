@@ -39,9 +39,9 @@ used in an authenticator app you should <a href="Account/Manage/ResetAuthenticat
 }
 
 @code {
-private string? message;
+private string message;
 private ApplicationUser user = default!;
-private IEnumerable<string>? recoveryCodes;
+private IEnumerable<string> recoveryCodes;
 
 [CascadingParameter]
 private HttpContext HttpContext { get; set; } = default!;
