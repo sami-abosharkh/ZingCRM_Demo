@@ -1,0 +1,64 @@
+﻿@if (Data is not null)
+{
+    <Grid TItem="ProjectM"
+          AllowSorting="true"
+          Class="table table-hover table-bordered table-striped"
+          Data="Data"
+          AllowPaging="true"
+          PageSize="20"
+          AutoHidePaging="true"
+          AllowRowClick="true"
+          OnRowDoubleClick="OnRowDoubleClick"
+          RowClass="GetRowClass"
+          Responsive="true">
+
+        <GridColumns>
+            <GridColumn TItem="ProjectM" HeaderText="AC #" SortKeySelector="item => item.ProjectNumber">
+                @context.ProjectNumber
+            </GridColumn>
+            <GridColumn TItem="ProjectM" HeaderText="Project" SortKeySelector="item => item.Name">
+                @context.Name
+            </GridColumn>
+            <GridColumn TItem="ProjectM" HeaderText="Client" SortKeySelector="item => item.Client">
+                @context.Client
+            </GridColumn>
+            <GridColumn TItem="ProjectM" HeaderText="Client Service" SortKeySelector="item => item.User.FirstName">
+                @($"{context.User.FirstName} {context.User.LastName}")
+            </GridColumn>
+            <GridColumn TItem="ProjectM" HeaderText="Operation" SortKeySelector="item => item.OperationUser.FirstName">
+                @($"{context.OperationUser.FirstName} {context.OperationUser.LastName}")
+            </GridColumn>
+            <GridColumn TItem="ProjectM" HeaderText="Date" SortKeySelector="item => item.Date">
+                @context.Date.ToString("yy/MM/dd")
+            </GridColumn>
+            <GridColumn TItem="ProjectM" HeaderText="Due Date" SortKeySelector="item => item.DueDate">
+                @context.DueDate.ToString("yy/MM/dd")
+            </GridColumn>
+        </GridColumns>
+    </Grid>
+}
+
+@code {
+    [Parameter]
+    public List<ProjectM> Data { get; set; } = new();
+
+    [Parameter]
+    public EventCallback<ProjectM> OnDoubleClickCB { get; set; }
+    
+    private async Task OnRowDoubleClick(GridRowEventArgs<ProjectM> args) => await OnDoubleClickCB.InvokeAsync(args.Item);
+
+    private string GetRowClass(ProjectM entity)
+    {
+        switch (entity.Status)
+        {
+            case SD.Status_Pending:
+                return string.Empty;
+            case SD.Status_Approved:
+                return string.Empty;
+            case SD.Status_Rejected:
+                return "table-danger";
+            default:
+                return string.Empty;
+        }
+    }
+}

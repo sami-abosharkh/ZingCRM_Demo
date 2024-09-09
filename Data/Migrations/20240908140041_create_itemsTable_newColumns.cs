@@ -5,19 +5,21 @@
 namespace ZingCRM_Demo.Migrations
 {
     /// <inheritdoc />
-    public partial class update_ApplicationUserTable_nameCol : Migration
+    public partial class create_itemsTable_newColumns : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.RenameColumn(
-                name: "Name",
-                table: "AspNetUsers",
-                newName: "LastName");
+            migrationBuilder.AddColumn<string>(
+                name: "Category",
+                table: "Items",
+                type: "nvarchar(max)",
+                nullable: false,
+                defaultValue: "");
 
             migrationBuilder.AddColumn<string>(
-                name: "FirstName",
-                table: "AspNetUsers",
+                name: "Description",
+                table: "Items",
                 type: "nvarchar(max)",
                 nullable: true);
         }
@@ -26,13 +28,12 @@ namespace ZingCRM_Demo.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropColumn(
-                name: "FirstName",
-                table: "AspNetUsers");
+                name: "Category",
+                table: "Items");
 
-            migrationBuilder.RenameColumn(
-                name: "LastName",
-                table: "AspNetUsers",
-                newName: "Name");
+            migrationBuilder.DropColumn(
+                name: "Description",
+                table: "Items");
         }
     }
 }

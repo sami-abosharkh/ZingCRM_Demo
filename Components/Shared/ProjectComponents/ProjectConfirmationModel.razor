@@ -1,0 +1,73 @@
+﻿<Button @onclick="OnShowModal" Color="ButtonColor.Primary">Confirm Project</Button>
+
+<Modal @ref="modal" Title="Confirm Project" IsScrollable="true" UseStaticBackdrop="true" IsVerticallyCentered="true" Size="ModalSize.Large">
+    <BodyTemplate>
+        <EditForm method="post" Model="Model" OnValidSubmit="OnValidSubmitAsync" FormName="approveProject">
+            <DataAnnotationsValidator />
+            <div class="form-floating mb-3">
+                <InputSelect id="status" class="form-select" @bind-Value="Model.Status">
+                    <option selected disabled>Select Status</option>
+                        <option>@SD.Status_Approved</option>
+                        <option>@SD.Status_Rejected</option>
+                </InputSelect>
+                <label for="Operation">Operation Manager</label>
+                <small><ValidationMessage For="() => Model.Status" class="text-danger" /></small>
+            </div>
+
+            <div class="form-floating mb-3">
+                <InputText id="ponumber" @bind-Value="Model.PONumber" class="form-control" placeholder="" />
+                <label for="ponumber" class="form-label">Purchase Order Number</label>
+                <small><ValidationMessage For="() => Model.PONumber" class="text-danger" /></small>
+            </div>
+            <div class="form-floating mb-3">
+                <InputDate id="DueDate" @bind-Value="Model.DueDate" class="form-control" />
+                <label for="DueDate" class="form-label">Due Date</label>
+                <small><ValidationMessage For="() => Model.DueDate" class="text-danger" /></small>
+            </div>
+            <div class="form-floating mb-3">
+                <InputDate id="InvoiceDate" @bind-Value="Model.InvoiceDate" class="form-control" />
+                <label for="InvoiceDate" class="form-label">Invoice Date</label>
+                <small><ValidationMessage For="() => Model.InvoiceDate" class="text-danger" /></small>
+            </div>
+            <Button Type="ButtonType.Submit" Color="ButtonColor.Primary" Class="fs-5 w-100" Style="height: 56px">Confirm</Button>
+        </EditForm>
+    </BodyTemplate>
+    <FooterTemplate>
+        <div class="text-end">
+            <Button @onclick="OnHideModal" Color="ButtonColor.Secondary">Close</Button>
+        </div>
+    </FooterTemplate>
+</Modal>
+
+@code {
+    private Modal modal = default!;
+
+    [SupplyParameterFromForm]
+    private ProjectConfirmationDTO Model { get; set; } = new();
+
+    [Parameter]
+    public ProjectM Project { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback<ProjectConfirmationDTO> OnUpsertCB { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        Model = new()
+        {
+                PONumber = Project.PONumber,
+                DueDate = Project.DueDate,
+                InvoiceDate = Project.InvoiceDate,
+        };
+    }
+
+
+    private async Task OnValidSubmitAsync()
+    {
+        await OnUpsertCB.InvokeAsync(Model);
+        await OnHideModal();
+    }
+
+    public async Task OnShowModal() => await modal.ShowAsync();
+    private async Task OnHideModal() => await modal.HideAsync();
+}

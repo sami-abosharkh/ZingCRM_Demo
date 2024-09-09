@@ -12,8 +12,8 @@ using ZingCRM_Demo.Data;
 namespace ZingCRM_Demo.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20240831171106_update_ApplicationUserTable_nameCol")]
-    partial class update_ApplicationUserTable_nameCol
+    [Migration("20240908121036_create_projectsTable_itemsTable")]
+    partial class create_projectsTable_itemsTable
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -294,6 +294,13 @@ namespace ZingCRM_Demo.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
+                    b.Property<string>("OperationUserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("PONumber")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("Phase")
                         .HasColumnType("nvarchar(max)");
 
@@ -310,6 +317,8 @@ namespace ZingCRM_Demo.Migrations
                         .HasColumnType("int");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("OperationUserId");
 
                     b.HasIndex("UserId");
 
@@ -380,9 +389,17 @@ namespace ZingCRM_Demo.Migrations
 
             modelBuilder.Entity("ZingCRM_Demo.Models.ProjectM", b =>
                 {
+                    b.HasOne("ZingCRM_Demo.Models.ApplicationUser", "OperationUser")
+                        .WithMany()
+                        .HasForeignKey("OperationUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("ZingCRM_Demo.Models.ApplicationUser", "User")
                         .WithMany()
                         .HasForeignKey("UserId");
+
+                    b.Navigation("OperationUser");
 
                     b.Navigation("User");
                 });

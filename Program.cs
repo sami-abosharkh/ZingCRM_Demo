@@ -18,6 +18,7 @@ builder.Services.AddRazorComponents()
 
 //-- Database Services
 builder.Services.AddScoped<IDbInitializer, DbInitializer>();
+builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IProjectRepository, ProjectRepository>();
 builder.Services.AddScoped<IItemRepository, ItemRepository>();
 
@@ -28,8 +29,8 @@ builder.Services.AddScoped<AuthenticationStateProvider, IdentityRevalidatingAuth
 
 builder.Services.AddAuthentication(options =>
 {
-options.DefaultScheme = IdentityConstants.ApplicationScheme;
-options.DefaultSignInScheme = IdentityConstants.ExternalScheme;
+    options.DefaultScheme = IdentityConstants.ApplicationScheme;
+    options.DefaultSignInScheme = IdentityConstants.ExternalScheme;
 })
 .AddIdentityCookies();
 
@@ -40,13 +41,13 @@ builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
 builder.Services.AddIdentityCore<ApplicationUser>(options =>
 {
-//-- Password settings.
-options.Password.RequireDigit = false;
-options.Password.RequireLowercase = false;
-options.Password.RequireNonAlphanumeric = false;
-options.Password.RequireUppercase = false;
-options.Password.RequiredLength = 6;
-options.Password.RequiredUniqueChars = 0;
+    //-- Password settings.
+    options.Password.RequireDigit = false;
+    options.Password.RequireLowercase = false;
+    options.Password.RequireNonAlphanumeric = false;
+    options.Password.RequireUppercase = false;
+    options.Password.RequiredLength = 6;
+    options.Password.RequiredUniqueChars = 0;
 })
 .AddEntityFrameworkStores<ApplicationDbContext>()
 .AddSignInManager()
@@ -66,13 +67,13 @@ var app = builder.Build();
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
-app.UseMigrationsEndPoint();
+    app.UseMigrationsEndPoint();
 }
 else
 {
-app.UseExceptionHandler("/Error", createScopeForErrors: true);
-// The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
-app.UseHsts();
+    app.UseExceptionHandler("/Error", createScopeForErrors: true);
+    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
+    app.UseHsts();
 }
 
 app.UseHttpsRedirection();
@@ -89,8 +90,8 @@ app.MapAdditionalIdentityEndpoints();
 // Seed the database
 using (var scope = app.Services.CreateScope())
 {
-var dbInitializer = scope.ServiceProvider.GetRequiredService<IDbInitializer>();
-await dbInitializer.Initialize();
+    var dbInitializer = scope.ServiceProvider.GetRequiredService<IDbInitializer>();
+    await dbInitializer.Initialize();
 }
 
 app.Run();

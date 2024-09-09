@@ -1,68 +1,77 @@
 ﻿@page "/admin/users"
-@using Microsoft.EntityFrameworkCore;
-@using Microsoft.AspNetCore.Authorization
-@using Microsoft.AspNetCore.Identity
 
-@rendermode InteractiveServer
+@rendermode @(new InteractiveServerRenderMode(false))
 
+@inject IJSRuntime JS
 @inject NavigationManager NavManager
 @inject UserManager<ApplicationUser> _userManager;
-@inject IJSRuntime JS
 
 @attribute [Authorize(Roles = SD.Role_Admin)]
 
 <PageTitle>Users Management</PageTitle>
-<h2 class="border-bottom">USERS MANAGEMENT</h2>
-<div class="row mb-2">
-    <div class="text-end">
-        <Button Type="ButtonType.Link" To="@($"/admin/user/create")" Color="ButtonColor.Primary" Outline="true">Create User</Button>
-    </div>
-</div>
+<h1 class="text-center fw-bold">USERS MANAGEMENT</h1>
+<hr />
 
-<Grid TItem="ApplicationUser"
-      Class="table table-hover table-bordered table-striped"
-      DataProvider="UsersDataProvider"
-      AllowSorting="true"
-      AllowPaging="true"
-      AllowRowClick="true"
-      RowClass="GetRowClass"
-      OnRowClick="OnRowClick"
-      Responsive="true">
+<Card Class="shadow-sm">
+    <CardBody>
+        <CardTitle Class="fw-bold m-0">USERS LIST</CardTitle>
+        <hr class="mt-2" />
+        <Grid TItem="ApplicationUser"
+              Class="table table-hover table-bordered table-striped"
+              DataProvider="UsersDataProvider"
+              AllowSorting="true"
+              AllowPaging="true"
+              AllowRowClick="true" 
+              OnRowDoubleClick="OnRowDoubleClick"
+              RowClass="GetRowClass"
+              Responsive="true">
 
-    <GridColumns>
-        <GridColumn TItem="ApplicationUser" HeaderText="Name"
-                    PropertyName="Name" SortKeySelector="item => item.FirstName">
-            @($"{context.FirstName} {context.LastName}")
-        </GridColumn>
-        <GridColumn TItem="ApplicationUser" HeaderText="Email"
-                    PropertyName="Email" SortKeySelector="item => item.Email">
-            @context.Email
-        </GridColumn>
-        <GridColumn TItem="ApplicationUser" HeaderText="Role"
-                    PropertyName="Role" SortKeySelector="item => item.Role">@context.Role</GridColumn>
-        <GridColumn TItem="ApplicationUser" HeaderText="Last Login"
-                    PropertyName="LastLogin" SortKeySelector="item => item.LastLogin">
-            @TimeSinceDate(context.LastLogin)
-        </GridColumn>
-        <GridColumn TItem="ApplicationUser" HeaderText="Lockout End" PropertyName="LockoutEnd" SortKeySelector="item => item.LockoutEnd">
-            @context.LockoutEnd
-        </GridColumn>
-    </GridColumns>
-</Grid>
+            <GridColumns>
+                <GridColumn TItem="ApplicationUser" HeaderText="Name" SortKeySelector="item => item.FirstName">
+                    @($"{context.FirstName} {context.LastName}")
+                </GridColumn>
+                <GridColumn TItem="ApplicationUser" HeaderText="Email" SortKeySelector="item => item.Email">
+                    @context.Email
+                </GridColumn>
+                <GridColumn TItem="ApplicationUser" HeaderText="Role" SortKeySelector="item => item.Role">
+                    @context.Role
+                </GridColumn>
+                <GridColumn TItem="ApplicationUser" HeaderText="Last Login" SortKeySelector="item => item.LastLogin">
+                    @TimeSinceDate(context.LastLogin)
+                </GridColumn>
+                <GridColumn TItem="ApplicationUser" HeaderText="Lockout End" SortKeySelector="item => item.LockoutEnd">
+                    @context.LockoutEnd
+                </GridColumn>
+            </GridColumns>
+        </Grid>
+    </CardBody>
+    <CardFooter>
+        <div class="text-end">
+            <Button Type="ButtonType.Link" To="@($"/admin/user/create")" Color="ButtonColor.Primary">Create User</Button>
+        </div>
+    </CardFooter>
+</Card>
 
 @code {
     [Inject] protected PreloadService PreloadService { get; set; } = default!;
-    // List to hold all users
-    private List<ApplicationUser> UsersList { get; set; } = new();
 
     private async Task<GridDataProviderResult<ApplicationUser>> UsersDataProvider(GridDataProviderRequest<ApplicationUser> request)
     {
         List<ApplicationUser> Users = default!;
-
-        PreloadService.Show();
         try
         {
-            Users = _userManager.Users.Where(f => !f.Email.Contains("admin")).ToList();
+            if (Users is null)
+            {
+                PreloadService.Show();
+                Users = _userManager.Users.Where(f => !f.Email.Contains("admin")).ToList() ?? new();
+
+                // Get roles for each user and assign it to the user object
+                foreach (var item in Users)
+                {
+                    var roles = await _userManager.GetRolesAsync(item);
+                    item.Role = roles.FirstOrDefault();
+                }
+            }
         }
         catch
         {
@@ -76,7 +85,7 @@
         return await Task.FromResult(request.ApplyTo(Users));
     }
 
-    private async Task OnRowClick(GridRowEventArgs<ApplicationUser> args)
+    private async Task OnRowDoubleClick(GridRowEventArgs<ApplicationUser> args)
     {
         await JS.InvokeVoidAsync("openInNewTab", $"/admin/user?id={args.Item.Id}");
     }

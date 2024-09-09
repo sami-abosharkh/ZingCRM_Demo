@@ -1,0 +1,69 @@
+﻿<Button @onclick="OnShowModal" Color="ButtonColor.Primary">Estimate Costs</Button>
+
+@if (Items is not null)
+{
+    <Modal @ref="modal" Title="Estimate Cost" IsScrollable="true" UseStaticBackdrop="true" IsVerticallyCentered="true" Size="ModalSize.Large">
+        <BodyTemplate>
+            @foreach (var item in Items)
+            {
+                <Card>
+                    <CardHeader>
+                        <div class="d-flex justify-content-between">
+                            <div>Category: @item.Category</div>
+                            <div>Quantity: @item.Quantity</div>
+                        </div>
+                    </CardHeader>
+                    <CardBody>
+                        <CardTitle Class="text-start fw-bolder">@item.Name</CardTitle>
+                        <CardText Class="text-justify">@item.Description</CardText>
+                        <div class="form-floating">
+                            <InputNumber id="@item.Id" @bind-Value="item.Cost" class="form-control" placeholder="" />
+                            <label>Cost</label>
+                        </div>
+                    </CardBody>
+                </Card>
+                <br />
+            }
+            @if (submitPressed && Items.Any(f => f.Cost <= 0))
+            {
+                <Alert Color="AlertColor.Danger" Class="text-start">
+                    <Icon Name="IconName.ExclamationTriangleFill" class="me-2"></Icon>
+                    All costs of items must be more than zero.
+                </Alert>
+            }
+            <div class="text-center">
+                <Button @onclick="OnValidSubmitAsync" Color="ButtonColor.Primary" Class="w-25" Disabled="Items.Any(f => f.Cost <= 0)">Submit</Button>
+            </div>
+        </BodyTemplate>
+        <FooterTemplate>
+            <div class="text-end">
+                <div class="flex-grow-1" />
+                <Button @onclick="OnHideModal" Color="ButtonColor.Secondary">Close</Button>
+            </div>
+        </FooterTemplate>
+    </Modal>
+}
+
+@code {
+    private Modal modal = default!;
+
+    [Parameter]
+    public List<ItemM> Items { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback<List<ItemM>> OnCostEstimatedCB { get; set; }
+
+    private bool submitPressed { get; set; } = false;
+
+    private async Task OnValidSubmitAsync()
+    {
+        submitPressed = true;
+        if (Items.Any(f => f.Cost <= 0)) return;
+
+        await OnCostEstimatedCB.InvokeAsync(Items);
+        await OnHideModal();
+    }
+
+    private async Task OnShowModal() => await modal.ShowAsync();
+    private async Task OnHideModal() => await modal.HideAsync();
+}

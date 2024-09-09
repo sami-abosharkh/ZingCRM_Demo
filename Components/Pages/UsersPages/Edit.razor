@@ -1,0 +1,139 @@
+﻿@page "/admin/user/edit"
+
+@rendermode @(new InteractiveServerRenderMode(false))
+
+@inject IUserRepository UserRepo;
+@inject UserManager<ApplicationUser> _userManager;
+
+@attribute [Authorize(Roles = SD.Role_Admin)]
+
+<PageTitle>Edit User</PageTitle>
+
+<h1 class="text-center fw-bold">EDIT USER</h1>
+<hr />
+@if (User is not null)
+{
+    <Card Class="shadow-sm">
+        <CardBody>
+            <EditForm method="post" Model="UserInput" OnValidSubmit="OnValidSubmitAsync" FormName="editUser">
+                <DataAnnotationsValidator />
+                <div class="row">
+                    <div class="col-6">
+                        <div class="form-floating">
+                            <InputText id="firstname" @bind-Value="UserInput.FirstName" class="form-control" placeholder="" />
+                            <label for="firstname">First Name</label>
+                            <small><ValidationMessage For="() => UserInput.FirstName" class="text-danger" /></small>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="form-floating">
+                            <InputText id="lastname" @bind-Value="UserInput.LastName" class="form-control" placeholder="" />
+                            <label for="lastname">Last Name</label>
+                            <small><ValidationMessage For="() => UserInput.LastName" class="text-danger" /></small>
+                        </div>
+                    </div>
+                </div>
+                <br />
+                <div class="row">
+                    <div class="col">
+                        <div class="form-floating">
+                            <InputText id="Email" @bind-Value="UserInput.Email" class="form-control" placeholder="name@example.com" />
+                            <label for="Email">Email</label>
+                            <small><ValidationMessage For="() => UserInput.Email" class="text-danger" /></small>
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="form-floating">
+                            <InputText id="PhoneNumber" @bind-Value="UserInput.PhoneNumber" class="form-control" placeholder="0500000000" />
+                            <label for="PhoneNumber">Phone Number</label>
+                            <small><ValidationMessage For="() => UserInput.PhoneNumber" class="text-danger" /></small>
+                        </div>
+                    </div>
+                </div>
+                <br />
+                <div class="form-floating mb-3">
+                    <InputSelect id="role" class="form-select" @bind-Value="UserInput.Role">
+                        <option selected disabled>Select Role</option>
+                        <option value="@SD.Role_ClientService">@SD.Role_ClientService</option>
+                        <option value="@SD.Role_OperationManager">@SD.Role_OperationManager</option>
+                        <option value="@SD.Role_Accountant">@SD.Role_Accountant</option>
+                        <option value="@SD.Role_Manager">@SD.Role_Manager</option>
+                    </InputSelect>
+                    <label for="role">Role</label>
+                </div>
+                <Button Type="ButtonType.Submit" Color="ButtonColor.Primary" Class="px-4">Save</Button>
+            </EditForm>
+        </CardBody>
+        <CardFooter>
+            <div class="text-end">
+                <Button Type="ButtonType.Link" To="@($"/admin/user?id={this.Id}")" Color="ButtonColor.Secondary" Outline="true" Class="px-4">Back</Button>
+            </div>
+        </CardFooter>
+    </Card>
+}
+
+@code {
+    [Inject] protected ToastService ToastService { get; set; } = default!;
+
+    [SupplyParameterFromQuery]
+    private string Id { get; set; }
+
+    [SupplyParameterFromForm]
+    private UserUpdateDTO UserInput { get; set; } = new();
+
+    private ApplicationUser User { get; set; } = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        User = await _userManager.FindByIdAsync(this.Id);
+        var roles = await _userManager.GetRolesAsync(User);
+        User.Role = roles.FirstOrDefault();
+
+        if (User is not null && string.IsNullOrEmpty(UserInput.Email))
+        {
+            UserInput = new()
+                {
+                    FirstName = User.FirstName,
+                    LastName = User.LastName,
+                    Email = User.Email,
+                    PhoneNumber = User.PhoneNumber,
+                    Role = User.Role
+                };
+        }
+    }
+
+    private async Task OnValidSubmitAsync()
+    {
+        try
+        {
+            if (!User.FirstName.Equals(UserInput.FirstName) || User.LastName.Equals(UserInput.LastName))
+            {
+                User.FirstName = UserInput.FirstName;
+                User.LastName = UserInput.LastName;
+                await UserRepo.UpdateAsync(User);
+            }
+            if (!User.Email.Equals(UserInput.Email))
+            {
+                await _userManager.SetEmailAsync(User, UserInput.Email);
+                await _userManager.SetUserNameAsync(User, UserInput.Email);
+            }
+            if (!User.PhoneNumber.Equals(UserInput.PhoneNumber))
+            {
+                await _userManager.SetPhoneNumberAsync(User, UserInput.PhoneNumber);
+            }
+            if (!User.Role.Equals(UserInput.Role))
+            {
+                await _userManager.RemoveFromRoleAsync(User, User.Role);
+                await _userManager.AddToRoleAsync(User, UserInput.Role);
+            }
+
+            ToastService.Notify(new(ToastType.Success, "Saved Successfully", $"User details saved successfully."));
+        }
+        catch (Exception ex)
+        {
+            // handle exception
+            Console.WriteLine($"An error occurred: {ex.Message}");
+            ToastService.Notify(new(ToastType.Danger, $"Error: {ex.Message}."));
+        }
+    }
+}

@@ -1,72 +1,217 @@
 ﻿@page "/projects"
 
-@rendermode InteractiveServer
+@rendermode @(new InteractiveServerRenderMode(false))
 
 @inject IProjectRepository ProjectRepo
 @inject IJSRuntime JS
 
-<PageTitle>Projects</PageTitle>
-<h1>PROJECTS</h1>
-<hr />
-<div class="row">
-    <div class="col-6">
-        <h2>Created Phase</h2>
-    </div>
-    <div class="col-6 text-end">
-        <Button Type="ButtonType.Link" To="project/create" Color="ButtonColor.Primary">Create Project</Button>
-        <Button @onclick="DeleteProjects" Type="ButtonType.Button" Color="ButtonColor.Danger">Delete All</Button>
-    </div>
-</div>
-<Grid @ref="grid"
-      TItem="ProjectM"
-      AllowRowClick="true"
-      AllowSorting="true"
-      Class="table table-hover table-bordered table-striped"
-      DataProvider="ProjectsDataProvider"
-      AllowPaging="true"
-      PageSize="10"
-      AutoHidePaging="true"
-      OnRowClick="OnRowClick"
-      RowClass="GetRowClass"
-      Responsive="true">
+@attribute [Authorize]
 
-    <GridColumns>
-        <GridColumn TItem="ProjectM" HeaderText="Project Number" SortKeySelector="item => item.ProjectNumber">
-            @context.ProjectNumber
-        </GridColumn>
-        <GridColumn TItem="ProjectM" HeaderText="Project Name" SortKeySelector="item => item.Name">
-            @context.Name
-        </GridColumn>
-        <GridColumn TItem="ProjectM" HeaderText="Client" SortKeySelector="item => item.Client">
-            @context.Client
-        </GridColumn>
-        <GridColumn TItem="ProjectM" HeaderText="Status" SortKeySelector="item => item.Status">
-            @context.Status
-        </GridColumn>
-        <GridColumn TItem="ProjectM" HeaderText="Date" SortKeySelector="item => item.Date">
-            @context.Date.ToString("dd/MM/yy")
-        </GridColumn>
-        <GridColumn TItem="ProjectM" HeaderText="Phase" SortKeySelector="item => item.Phase">
-            @context.Phase
-        </GridColumn>
-    </GridColumns>
-</Grid>
+<PageTitle>Projects</PageTitle>
+<h1 class="text-center fw-bold">PROJECTS</h1>
+<hr />
+@if (Projects is not null)
+{
+    <Tabs EnableFadeEffect="true">
+        <Tab Title="All">
+            <Content>
+                <br />
+                <Card Class="shadow-sm">
+                    <CardBody>
+                        <CardTitle Class="fw-bold m-0">MY PROJECTS</CardTitle>
+                        <hr class="mt-2" />
+                        <GridProjects Data="Projects" OnDoubleClickCB="OnRowDoubleClick"></GridProjects>
+                    </CardBody>
+                    <CardFooter>
+                        <AuthorizeView Roles="@($"{SD.Role_Admin},{SD.Role_ClientService}")">
+                            <div class="row">
+                                <div class="col">
+                                    <ActionConfirmation OnEventCB="DeleteProjects"
+                                                        Action="Delete All"
+                                                        Outline="true"
+                                                        DialogTitle="Delete Projects"
+                                                        DialogMessage1="@($"Are you sure you want to delete all projects?")"
+                                                        DialogMessage2="Do you want to proceed?">
+                                    </ActionConfirmation>
+                                </div>
+                                <div class="col text-end">
+                                    <Button Type="ButtonType.Link" To="project/upsert" Color="ButtonColor.Primary">Create Project</Button>
+                                </div>
+                            </div>
+                        </AuthorizeView>
+                    </CardFooter>
+                </Card>
+            </Content>
+        </Tab>
+        <Tab Title="Pending" Active="true">
+            <Content>
+                <br />
+                <Card Class="shadow-sm">
+                    <CardBody>
+                        <CardTitle Class="fw-bold m-0">MY PROJECTS</CardTitle>
+                        <hr class="mt-2" />
+                        <GridProjects Data="Projects.Where(f => f.Status.Equals(SD.Status_Pending)).ToList()" OnDoubleClickCB="OnRowDoubleClick"></GridProjects>
+                    </CardBody>
+                    <CardFooter>
+                        <AuthorizeView Roles="@($"{SD.Role_Admin},{SD.Role_ClientService}")">
+                            <div class="row">
+                                <div class="col">
+                                    <ActionConfirmation OnEventCB="DeleteProjects"
+                                                        Action="Delete All"
+                                                        Outline="true"
+                                                        DialogTitle="Delete Projects"
+                                                        DialogMessage1="@($"Are you sure you want to delete all projects?")"
+                                                        DialogMessage2="Do you want to proceed?">
+                                    </ActionConfirmation>
+                                </div>
+                                <div class="col text-end">
+                                    <Button Type="ButtonType.Link" To="project/upsert" Color="ButtonColor.Primary">Create Project</Button>
+                                </div>
+                            </div>
+                        </AuthorizeView>
+                    </CardFooter>
+                </Card>
+            </Content>
+        </Tab>
+        <Tab Title="Approved">
+            <Content>
+                <br />
+                <Card Class="shadow-sm">
+                    <CardBody>
+                        <CardTitle Class="fw-bold m-0">MY PROJECTS</CardTitle>
+                        <hr class="mt-2" />
+                        <GridProjects Data="Projects.Where(f => f.Status.Equals(SD.Status_Approved)).ToList()" OnDoubleClickCB="OnRowDoubleClick"></GridProjects>
+                    </CardBody>
+                    <CardFooter>
+                        <AuthorizeView Roles="@($"{SD.Role_Admin},{SD.Role_ClientService}")">
+                            <div class="row">
+                                <div class="col">
+                                    <ActionConfirmation OnEventCB="DeleteProjects"
+                                                        Action="Delete All"
+                                                        Outline="true"
+                                                        DialogTitle="Delete Projects"
+                                                        DialogMessage1="@($"Are you sure you want to delete all projects?")"
+                                                        DialogMessage2="Do you want to proceed?">
+                                    </ActionConfirmation>
+                                </div>
+                                <div class="col text-end">
+                                    <Button Type="ButtonType.Link" To="project/upsert" Color="ButtonColor.Primary">Create Project</Button>
+                                </div>
+                            </div>
+                        </AuthorizeView>
+                    </CardFooter>
+                </Card>
+            </Content>
+        </Tab>
+        <Tab Title="Rejected">
+            <Content>
+                <br />
+                <Card Class="shadow-sm">
+                    <CardBody>
+                        <CardTitle Class="fw-bold m-0">MY PROJECTS</CardTitle>
+                        <hr class="mt-2" />
+                        <GridProjects Data="Projects.Where(f => f.Status.Equals(SD.Status_Rejected)).ToList()" OnDoubleClickCB="OnRowDoubleClick"></GridProjects>
+                    </CardBody>
+                    <CardFooter>
+                        <AuthorizeView Roles="@($"{SD.Role_Admin},{SD.Role_ClientService}")">
+                            <div class="row">
+                                <div class="col">
+                                    <ActionConfirmation OnEventCB="DeleteProjects"
+                                                        Action="Delete All"
+                                                        Outline="true"
+                                                        DialogTitle="Delete Projects"
+                                                        DialogMessage1="@($"Are you sure you want to delete all projects?")"
+                                                        DialogMessage2="Do you want to proceed?">
+                                    </ActionConfirmation>
+                                </div>
+                                <div class="col text-end">
+                                    <Button Type="ButtonType.Link" To="project/upsert" Color="ButtonColor.Primary">Create Project</Button>
+                                </div>
+                            </div>
+                        </AuthorizeView>
+                    </CardFooter>
+                </Card>
+            </Content>
+        </Tab>
+        <Tab Title="Completed">
+            <Content>
+                <br />
+                <Card Class="shadow-sm">
+                    <CardBody>
+                        <CardTitle Class="fw-bold m-0">MY PROJECTS</CardTitle>
+                        <hr class="mt-2" />
+                        <GridProjects Data="Projects.Where(f => f.Status.Equals(SD.Status_Completed)).ToList()" OnDoubleClickCB="OnRowDoubleClick"></GridProjects>
+                    </CardBody>
+                    <CardFooter>
+                        <AuthorizeView Roles="@($"{SD.Role_Admin},{SD.Role_ClientService}")">
+                            <div class="row">
+                                <div class="col">
+                                    <ActionConfirmation OnEventCB="DeleteProjects"
+                                                        Action="Delete All"
+                                                        Outline="true"
+                                                        DialogTitle="Delete Projects"
+                                                        DialogMessage1="@($"Are you sure you want to delete all projects?")"
+                                                        DialogMessage2="Do you want to proceed?">
+                                    </ActionConfirmation>
+                                </div>
+                                <div class="col text-end">
+                                    <Button Type="ButtonType.Link" To="project/upsert" Color="ButtonColor.Primary">Create Project</Button>
+                                </div>
+                            </div>
+                        </AuthorizeView>
+                    </CardFooter>
+                </Card>
+            </Content>
+        </Tab>
+    </Tabs>
+}
 
 @code {
     [Inject] protected PreloadService PreloadService { get; set; } = default!;
 
-    private Grid<ProjectM> grid = default!;
+    // Cascading parameter to get the current authentication state
+    [CascadingParameter]
+    private Task<AuthenticationState> authenticationState { get; set; }
 
-    private async Task<GridDataProviderResult<ProjectM>> ProjectsDataProvider(GridDataProviderRequest<ProjectM> request)
+    private List<ProjectM> Projects = default!;
+
+    protected override async Task OnInitializedAsync()
     {
-        IEnumerable<ProjectM> Projects = default!;
+        var authState = await authenticationState;
+
         PreloadService.Show();
         try
         {
-            Projects = await ProjectRepo.GetAllAsync(
-            orderBy: p => p.ProjectNumber,
-            ascending: false,
-            includeProperties: "Items"); // call a service or an API to pull the Projects
+            var roles = authState.User.Claims.Where(c => c.Type == ClaimTypes.Role).Select(c => c.Value).ToList();
+            var userId = authState.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (roles.Contains(SD.Role_Admin))
+            {
+                Projects = await ProjectRepo.GetAllAsync(
+                    orderBy: p => p.ProjectNumber,
+                    ascending: false,
+                    includeProperties: "User,Items,OperationUser"); // call a service or an API to pull the Projects
+            }
+            else if (roles.Contains(SD.Role_ClientService))
+            {
+                Projects = await ProjectRepo.GetAllAsync(
+                    orderBy: p => p.ProjectNumber,
+                    ascending: false,
+                    filter: f => f.UserId.Equals(userId),
+                    includeProperties: "User,Items,OperationUser"); // call a service or an API to pull the Projects
+            }
+            else if (roles.Contains(SD.Role_OperationManager))
+            {
+                Projects = await ProjectRepo.GetAllAsync(
+                    orderBy: p => p.ProjectNumber,
+                    ascending: false,
+                    filter: f => f.OperationUserId.Equals(userId),
+                    includeProperties: "User,Items,OperationUser"); // call a service or an API to pull the Projects
+            }
+            else
+            {
+                Projects = new();
+            }
         }
         catch
         {
@@ -76,34 +221,9 @@
         {
             PreloadService.Hide();
         }
-
-        return await Task.FromResult(request.ApplyTo(Projects));
     }
 
-    private async Task OnRowClick(GridRowEventArgs<ProjectM> args)
-    {
-        await JS.InvokeVoidAsync("openInNewTab", $"/project/details?id={args.Item.Id}");
-    }
+    private async Task OnRowDoubleClick(ProjectM entity) => await JS.InvokeVoidAsync("openInNewTab", $"/project/details?id={entity.Id}");
 
-    private string GetRowClass(ProjectM entity)
-    {
-        switch (entity.Phase)
-        {
-            case SD.Phase_Cost:
-                return "table-warning";
-            case SD.Phase_Price:
-                return "table-warning";
-            case SD.Phase_PurchaseOrder:
-                return "table-warning";
-            default:
-                return string.Empty;
-        }
-    }
-
-    private async Task DeleteProjects()
-    {
-        var projects = await ProjectRepo.GetAllAsync();
-        await ProjectRepo.RemoveRange(projects);
-        await grid.RefreshDataAsync();
-    }
+    private async Task DeleteProjects() => await ProjectRepo.RemoveRange(Projects);
 }

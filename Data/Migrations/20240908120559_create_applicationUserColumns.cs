@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace ZingCRM_Demo.Migrations
 {
     /// <inheritdoc />
-    public partial class add_ApplicationUserTable_newColumns : Migration
+    public partial class create_applicationUserColumns : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -18,10 +18,22 @@ namespace ZingCRM_Demo.Migrations
                 nullable: false,
                 defaultValue: new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified));
 
+            migrationBuilder.AddColumn<string>(
+                name: "FirstName",
+                table: "AspNetUsers",
+                type: "nvarchar(max)",
+                nullable: true);
+
             migrationBuilder.AddColumn<DateTime>(
                 name: "LastLogin",
                 table: "AspNetUsers",
                 type: "datetime2",
+                nullable: true);
+
+            migrationBuilder.AddColumn<string>(
+                name: "LastName",
+                table: "AspNetUsers",
+                type: "nvarchar(max)",
                 nullable: true);
         }
 
@@ -33,7 +45,15 @@ namespace ZingCRM_Demo.Migrations
                 table: "AspNetUsers");
 
             migrationBuilder.DropColumn(
+                name: "FirstName",
+                table: "AspNetUsers");
+
+            migrationBuilder.DropColumn(
                 name: "LastLogin",
+                table: "AspNetUsers");
+
+            migrationBuilder.DropColumn(
+                name: "LastName",
                 table: "AspNetUsers");
         }
     }

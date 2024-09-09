@@ -1,0 +1,13 @@
+﻿<div class="d-lg-flex w-100 text-center rounded border-2 border-bottom @(BottomMargin?"mb-3":"")">
+    <div class="col-lg-4 p-3 rounded-start text-bg-dark">@Title</div>
+    <div class="col-lg bg-light rounded-end py-3">@(string.IsNullOrEmpty(Detail) ? "N/A" : Detail)</div>
+</div>
+
+@code {
+    [Parameter]
+    public string Title { get; set; }
+    [Parameter]
+    public string Detail { get; set; }
+    [Parameter]
+    public bool BottomMargin { get; set; } = true;
+}

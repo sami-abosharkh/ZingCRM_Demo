@@ -1,0 +1,349 @@
+﻿@page "/project/upsert"
+
+@rendermode @(new InteractiveServerRenderMode(false))
+
+@inject UserManager<ApplicationUser> _userManager;
+@inject IProjectRepository ProjectRepo
+@inject NavigationManager NavManager
+
+@attribute [Authorize(Roles = $"{SD.Role_Admin},{SD.Role_ClientService}")]
+
+<PageTitle>@(this.Id > 0 ? "Edit" : "Create") Project</PageTitle>
+<h1 class="text-center fw-bold">@(this.Id > 0 ? "EDIT" : "CREATE") PROJECT</h1>
+<hr />
+
+@if (Project is null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <div class="row">
+        <div class="col-md-4">
+            <Card Class="shadow-sm">
+                <CardBody>
+                    <CardTitle Class="fw-bold m-0">PROJECT INFORMATION</CardTitle>
+                    <hr class="mt-2" />
+                    <EditForm method="post" Model="Project" OnValidSubmit="OnValidSubmitAsync" FormName="createProject">
+                        <DataAnnotationsValidator />
+                        @if (this.Id > 0)
+                        {
+                            <input type="hidden" value="@Project.Id" />
+                        }
+                        <div class="form-floating mb-3">
+                            <InputNumber id="projectnumber" @bind-Value="Project.ProjectNumber" class="form-control" disabled />
+                            <label for="projectnumber" class="form-label">AC #</label>
+                        </div>
+                        <div class="form-floating mb-3">
+                            <InputText id="name" @bind-Value="Project.Name" class="form-control" placeholder="" />
+                            <label for="name" class="form-label">Project Name</label>
+                            <small><ValidationMessage For="() => Project.Name" class="text-danger" /></small>
+                        </div>
+                        <div class="mb-3">
+                            <div class="input-group">
+                                <Button Color="ButtonColor.Secondary" Outline="true">New</Button>
+                                <div class="form-floating">
+                                    <InputText id="client" @bind-Value="Project.Client" class="form-control" placeholder="" />
+                                    <label for="client" class="form-label">Client</label>
+                                </div>
+                            </div>
+                            <small><ValidationMessage For="() => Project.Client" class="text-danger" /></small>
+                        </div>
+
+                        <div class="form-floating mb-3">
+                            <InputSelect id="Operation" class="form-select" @bind-Value="Project.OperationUserId">
+                                <option selected disabled>Select Operation</option>
+                                @foreach (var user in OperationUsers)
+                                {
+                                    <option value="@user.Id">@($"{user.FirstName} {user.LastName}")</option>
+                                }
+                            </InputSelect>
+                            <label for="Operation">Operation Manager</label>
+                            <small><ValidationMessage For="() => Project.OperationUserId" class="text-danger" /></small>
+                        </div>
+                        <div class="form-floating mb-3">
+                            <InputDate id="date" @bind-Value="Project.Date" class="form-control" disabled />
+                            <label for="date" class="form-label">Date</label>
+                            <small><ValidationMessage For="() => Project.Date" class="text-danger" /></small>
+                        </div>
+                        <div class="form-floating mb-3">
+                            <InputDate id="DueDate" @bind-Value="Project.DueDate" class="form-control" />
+                            <label for="DueDate" class="form-label">Due Date</label>
+                            <small><ValidationMessage For="() => Project.DueDate" class="text-danger" /></small>
+                        </div>
+                        <div class="form-floating mb-3">
+                            <InputDate id="InvoiceDate" @bind-Value="Project.InvoiceDate" class="form-control" />
+                            <label for="InvoiceDate" class="form-label">Invoice Date</label>
+                            <small><ValidationMessage For="() => Project.InvoiceDate" class="text-danger" /></small>
+                        </div>
+                        <Button @onclick="()=>{createPressed = true;}" Type="ButtonType.Submit" Color="ButtonColor.Primary" Class="px-4">@(this.Id > 0 ? "Save" : "Create")</Button>
+                    </EditForm>
+                </CardBody>
+                <CardFooter>
+                    <div class="text-end">
+                        <Button Type="ButtonType.Link" To="@(this.Id > 0 ? $"/project/details?id={this.Id}" : "/projects")" Color="ButtonColor.Secondary" Outline="true" Class="px-4">@(this.Id > 0 ? "Back" : "Cancel")</Button>
+                    </div>
+                </CardFooter>
+            </Card>
+            <br />
+        </div>
+
+        <div class="col-md-8">
+            <Card Class="shadow-sm">
+                <CardBody>
+                    <CardTitle Class="fw-bold m-0">ITEMS</CardTitle>
+                    <hr class="mt-2" />
+                    <Grid @ref="grid"
+                          TItem="ItemM"
+                          AllowSorting="true"
+                          Class="table table-hover table-bordered table-striped"
+                          Data="Items"
+                          AllowDetailView="true"
+                          AllowRowClick="true"
+                          OnRowDoubleClick="OnRowDoubleClick"
+                          Responsive="true">
+
+                        <GridColumns>
+                            <GridColumn TItem="ItemM" HeaderText="Name" SortKeySelector="item => item.Name">@context.Name</GridColumn>
+                            <GridColumn TItem="ItemM" HeaderText="Quantity" SortKeySelector="item => item.Quantity">@context.Quantity</GridColumn>
+                            <GridColumn TItem="ItemM" HeaderText="Category" SortKeySelector="item => item.Category">@context.Category</GridColumn>
+                        </GridColumns>
+                        <GridDetailView TItem="ItemM">
+                            @if (!string.IsNullOrEmpty(context.Description))
+                            {
+                                <dl>
+                                    <dt>Description</dt>
+                                    <dd class="text-justify">@context.Description</dd>
+                                </dl>
+                            }
+                        </GridDetailView>
+                    </Grid>
+                    @if (createPressed && Project.Items is null)
+                    {
+                        <Alert Color="AlertColor.Danger">
+                            <Icon Name="IconName.ExclamationTriangleFill" class="me-2"></Icon>
+                            Please add the necessary items to proceed.
+                        </Alert>
+                    }
+                </CardBody>
+                <CardFooter>
+                    <div class="d-flex">
+                        <div>
+                            @if (Items.Count > 0)
+                            {
+                                <ActionConfirmation OnEventCB="RemoveItems"
+                                                    Action="Remove Items"
+                                                    Outline="true"
+                                                    DialogTitle="Remove All Items"
+                                                    DialogMessage1="@($"Are you sure you want to remove all items?")"
+                                                    DialogMessage2="Do you want to proceed?">
+                                </ActionConfirmation>
+                            }
+                        </div>
+                        <div class="flex-grow-1" />
+                        <div>
+                            <UpsertItem @ref="UpsertItemComponent" OnUpsertCB="UpsertItem" OnDeleteCB="RemoveItem"></UpsertItem>
+                        </div>
+                    </div>
+                </CardFooter>
+
+            </Card>
+            <br />
+        </div>
+    </div>
+}
+
+@code {
+    [Inject] protected ToastService ToastService { get; set; } = default!;
+    [Inject] protected PreloadService PreloadService { get; set; } = default!;
+
+    private Grid<ItemM> grid = default!;
+    private UpsertItem UpsertItemComponent = default!;
+
+    [SupplyParameterFromQuery]
+    private int Id { get; set; }
+
+    [SupplyParameterFromForm]
+    private ProjectM Project { get; set; }
+
+    private List<ItemM> Items { get; set; } = new();
+    private List<ApplicationUser> OperationUsers { get; set; }
+    private ItemM SelectedItem { get; set; } = default!;
+
+    private bool createPressed { get; set; } = false;
+
+    // Cascading parameter to get the current authentication state
+    [CascadingParameter]
+    private Task<AuthenticationState> authenticationState { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await authenticationState;
+        var roles = authState.User.Claims.Where(c => c.Type == ClaimTypes.Role).Select(c => c.Value).ToList();
+        var userId = authState.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+        PreloadService.Show();
+        try
+        {
+            if (this.Id > 0)
+            {
+                if (roles.Contains(SD.Role_Admin))
+                {
+                    Project = await ProjectRepo.GetAsync(filter: x => x.Id == this.Id, includeProperties: "Items");
+                }
+                else if (roles.Contains(SD.Role_ClientService))
+                {
+                    Project = await ProjectRepo.GetAsync(filter: f => f.Id == this.Id && userId == f.UserId, includeProperties: "Items");
+                }
+                if (Project is null)
+                {
+                    NavManager.NavigateTo("notfound");
+                }
+                else
+                {
+                    Items = Project.Items.ToList();
+                }
+            }
+            else
+            {
+                Project = new()
+                    {
+                        UserId = authState.User.FindFirst(ClaimTypes.NameIdentifier)?.Value,
+                        Date = DateTime.Now,
+                        Version = 1,
+                        Phase = PhaseSD.GetValue(PhaseSD.PhasesEnum.Created),
+                        Status = SD.Status_Pending,
+                        DueDate = DateTime.Now.AddDays(30),
+                        InvoiceDate = DateTime.Now.AddDays(30),
+                        ProjectNumber = await ProjectRepo.GetTotalCountAsync() + 1,
+                    };
+            }
+        }
+        catch
+        {
+            // handle exception
+        }
+        finally
+        {
+            OperationUsers = await _userManager.GetUsersInRoleAsync(SD.Role_OperationManager) as List<ApplicationUser>;
+            PreloadService.Hide();
+        }
+    }
+
+    private async Task OnRowDoubleClick(GridRowEventArgs<ItemM> args)
+    {
+        SelectedItem = args.Item;
+        await UpsertItemComponent.OnShowModal(SelectedItem);
+    }
+
+    public async Task UpsertItem(ItemM model)
+    {
+        try
+        {
+            string toastTitle = string.Empty;
+            string toastMsg = string.Empty;
+
+            if (model != null)
+            {
+                if (SelectedItem is not null)
+                {
+                    // Item exists, update it
+                    var index = Items.IndexOf(SelectedItem);
+                    Items[index] = model;
+                    toastTitle = "Updated Item";
+                    toastMsg = "Item was updated successfully.";
+                    SelectedItem = default!;
+                }
+                else
+                {
+                    // Item does not exist, add it
+                    Items.Add(model);
+                    toastTitle = "Added Item";
+                    toastMsg = "New item was added successfully.";
+                }
+
+                // Update the Project.Items property
+                Project.Items = Items;
+
+                // Refresh the grid and notify success
+                await grid.RefreshDataAsync();
+                ToastService.Notify(new(ToastType.Success, toastTitle, toastMsg));
+            }
+        }
+        catch (Exception ex)
+        {
+            // handle exception
+            Console.WriteLine($"An error occurred: {ex.Message}");
+            ToastService.Notify(new(ToastType.Danger, $"Error: {ex.Message}."));
+        }
+    }
+
+    public async Task RemoveItem()
+    {
+        try
+        {
+            if (SelectedItem is not null)
+            {
+                // Remove the found item from the list
+                Items.Remove(SelectedItem);
+
+                // Update the Project.Items property
+                if (Items.Count == 0)
+                {
+                    Project.Items = default!;
+                }
+                else
+                {
+                    Project.Items = Items;
+                }
+
+                // Refresh the grid and notify success
+                await grid.RefreshDataAsync();
+                ToastService.Notify(new(ToastType.Success, "Removed Item", "Item was removed successfully."));
+            }
+            else
+            {
+                // Notify if item was not found
+                ToastService.Notify(new(ToastType.Danger, "Item Not Found", "The item with the specified ID was not found."));
+            }
+        }
+        catch (Exception ex)
+        {
+            // handle exception
+            Console.WriteLine($"An error occurred: {ex.Message}");
+            ToastService.Notify(new(ToastType.Danger, $"Error: {ex.Message}."));
+        }
+    }
+
+    public async Task RemoveItems()
+    {
+        try
+        {
+            Items.Clear();
+            Project.Items = default!;
+            await grid.RefreshDataAsync();
+
+            ToastService.Notify(new(ToastType.Success, "Removed All Items", "All items were removed successfully."));
+        }
+        catch (Exception ex)
+        {
+            // handle exception
+            Console.WriteLine($"An error occurred: {ex.Message}");
+            ToastService.Notify(new(ToastType.Danger, $"Error: {ex.Message}."));
+        }
+    }
+
+    public async Task OnValidSubmitAsync()
+    {
+        if(this.Id > 0)
+        {
+            await ProjectRepo.UpdateAsync(Project);
+            NavManager.NavigateTo($"/project/details?id={Project.Id}");
+        }
+        else
+        {
+            await ProjectRepo.CreateAsync(Project);
+            NavManager.NavigateTo("/projects");
+        }
+    }
+}

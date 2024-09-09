@@ -1,0 +1,75 @@
+﻿<Button @onclick="OnShowModal" Color="ButtonColor.Primary" Class="ms-2">Quote Price</Button>
+
+@if (Items is not null)
+{
+    <Modal @ref="modal" Title="Price Quote" IsScrollable="true" UseStaticBackdrop="true" IsVerticallyCentered="true" Size="ModalSize.Large">
+        <BodyTemplate>
+            @foreach (var item in Items)
+            {
+                <div class="row mb-2">
+                    <div class="col-6 text-start">
+                        <label class="fw-bold" for="@item.Id">@item.Name</label>
+                    </div>
+                    <div class="col-6 text-end">
+                        <div class="fw-bold">Quantity: @item.Quantity</div>
+                    </div>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-6 text-start">
+                        <div class="form-floating">
+                            <input value="@item.Cost" class="form-control" placeholder="" disabled />
+                            <label>Cost</label>
+                        </div>
+                    </div>
+                    <div class="col-6 text-end">
+                        <div class="form-floating">
+                            <InputNumber id="@item.Id" @bind-Value="item.Price" class="form-control" placeholder="" />
+                            <label>Price</label>
+                        </div>
+                    </div>
+                </div>
+                <br />
+            }
+            @if (submitPressed && Items.Any(f => f.Price <= 0))
+            {
+                <Alert Color="AlertColor.Danger" Class="text-start">
+                    <Icon Name="IconName.ExclamationTriangleFill" class="me-2"></Icon>
+                    All prices of items must be more than zero.
+                </Alert>
+            }
+            <div class="text-center">
+                <Button @onclick="OnValidSubmitAsync" Color="ButtonColor.Primary" Class="w-25">Submit</Button>
+            </div>
+        </BodyTemplate>
+        <FooterTemplate>
+            <div class="text-end">
+                <div class="flex-grow-1" />
+                <Button @onclick="OnHideModal" Color="ButtonColor.Secondary">Close</Button>
+            </div>
+        </FooterTemplate>
+    </Modal>
+}
+
+@code {
+    private Modal modal = default!;
+
+    [Parameter]
+    public List<ItemM> Items { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback<List<ItemM>> OnPriceQuotedCB { get; set; }
+
+    private bool submitPressed { get; set; } = false;
+
+    private async Task OnValidSubmitAsync()
+    {
+        submitPressed = true;
+        if (Items.Any(f => f.Price <= 0)) return;
+
+        await OnPriceQuotedCB.InvokeAsync(Items);
+        await OnHideModal();
+    }
+
+    private async Task OnShowModal() => await modal.ShowAsync();
+    private async Task OnHideModal() => await modal.HideAsync();
+}

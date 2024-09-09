@@ -1,0 +1,50 @@
+﻿<Grid TItem="ItemM"
+      AllowSorting="true"
+      Class="table table-hover table-bordered table-striped"
+      Data="Data"
+      AllowDetailView="true"
+      Responsive="true">
+    <GridColumns>
+        <GridColumn TItem="ItemM" HeaderText="Name" SortKeySelector="item => item.Name">
+            @context.Name
+        </GridColumn>
+        <GridColumn TItem="ItemM" HeaderText="Category" SortKeySelector="item => item.Category">
+            @context.Category
+        </GridColumn>
+        <GridColumn TItem="ItemM" HeaderText="Quantity" SortKeySelector="item => item.Quantity">
+            @context.Quantity
+        </GridColumn>
+        <GridColumn TItem="ItemM" HeaderText="Price" SortKeySelector="item => item.Price" ColumnClass="@(x => x.Price <= 0 && x.Project.Phase.Equals(PhaseSD.PhaseDictionary.FirstOrDefault(f => f.Key == PhaseSD.PhasesEnum.Costed).Value) ? "table-warning" : "")">
+            @context.Price.ToString("N2")
+        </GridColumn>
+        <GridColumn TItem="ItemM" HeaderText="Cost" SortKeySelector="item => item.Cost" ColumnClass="@(x => x.Cost <= 0 && x.Project.Phase.Equals(PhaseSD.PhaseDictionary.FirstOrDefault(f => f.Key == PhaseSD.PhasesEnum.Created).Value) ? "table-warning" : "")">
+            @context.Cost.ToString("N2")
+        </GridColumn>
+        <GridColumn TItem="ItemM" HeaderText="Total Price" SortKeySelector="item => (item.Price * item.TotalPrice)">
+            @context.TotalPrice.ToString("N2")
+        </GridColumn>
+        <GridColumn TItem="ItemM" HeaderText="Total Cost" SortKeySelector="item => item.TotalCost">
+            @context.TotalCost.ToString("N2")
+        </GridColumn>
+        <GridColumn TItem="ItemM" HeaderText="Margin $">
+            @((context.Cost == 0 || context.Price == 0) ? 0 : (context.TotalPrice - context.TotalCost).ToString("N2"))
+        </GridColumn>
+        <GridColumn TItem="ItemM" HeaderText="Margin %">
+            @((context.Cost == 0 || context.Price == 0) ? 0 : (((context.TotalPrice - context.TotalCost) / context.TotalCost) * 100).ToString("F2"))%
+        </GridColumn>
+    </GridColumns>
+    <GridDetailView TItem="ItemM">
+        @if (!string.IsNullOrEmpty(context.Description))
+        {
+            <dl>
+                <dt>Description</dt>
+                <dd class="text-justify">@context.Description</dd>
+            </dl>
+        }
+    </GridDetailView>
+</Grid>
+
+@code {
+    [Parameter]
+    public List<ItemM> Data { get; set; } = new();
+}

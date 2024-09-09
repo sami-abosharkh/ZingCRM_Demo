@@ -1,80 +1,123 @@
-﻿<Button @onclick="OnShowModal" Type="ButtonType.Button" Color="ButtonColor.Primary">Add Item</Button>
+﻿<Button @onclick="() => OnShowModal()" Color="ButtonColor.Primary">Add Item</Button>
 
-<Modal @ref="modal" Title="Edit" UseStaticBackdrop="true" CloseOnEscape="false" IsVerticallyCentered="true">
-<BodyTemplate>
-<EditForm method="post" Model="Item" OnValidSubmit="OnValidSubmitAsync" FormName="createItem">
-<DataAnnotationsValidator />
-@if (Item.Id > 0)
-{
-<input type="hidden" value="@Item.Id" />
-}
-<div class="form-floating mb-3">
-<InputText id="name" @bind-Value="Item.Name" class="form-control" placeholder="Item Name" />
-<label for="name" class="form-label">Item</label>
-<small><ValidationMessage For="() => Item.Name" class="text-danger" /></small>
-</div>
-<div class="form-floating mb-3">
-<InputNumber id="quantity" @bind-Value="Item.Quantity" class="form-control" placeholder="Quantity" />
-<label for="quantity" class="form-label">Quantity</label>
-<small><ValidationMessage For="() => Item.Quantity" class="text-danger" /></small>
-</div>
-@if (Item.Project is not null)
-{
-if (Item.Project.Phase.Equals(SD.Phase_Cost))
-{
-<div class="form-floating mb-3">
-<InputNumber id="Cost" @bind-Value="Item.Cost" class="form-control" placeholder="Cost" />
-<label for="Cost" class="form-label">Cost</label>
-<small><ValidationMessage For="() => Item.Cost" class="text-danger" /></small>
-</div>
-}
-else if (Item.Project.Phase.Equals(SD.Phase_Price))
-{
-<div class="form-floating mb-3">
-<InputNumber id="Price" @bind-Value="Item.Price" class="form-control" placeholder="Price" />
-<label for="Price" class="form-label">Price</label>
-<small><ValidationMessage For="() => Item.Price" class="text-danger" /></small>
-</div>
-}
-}
-<Button Type="ButtonType.Submit" Color="ButtonColor.Primary">@(Item.Id > 0 ? "Add" : "Update")</Button>
-</EditForm>
-</BodyTemplate>
-<FooterTemplate>
-<Button Color="ButtonColor.Secondary" @onclick="OnHideModal">Close</Button>
-</FooterTemplate>
+<Modal @ref="modal" Title="@(isEdit ? "Update Item" : "Add Item")" IsScrollable="true" UseStaticBackdrop="true" IsVerticallyCentered="true" Size="ModalSize.Large">
+    <BodyTemplate>
+        <EditForm method="post" Model="Item" OnValidSubmit="OnValidSubmitAsync" FormName="upsertItem">
+            <DataAnnotationsValidator />
+            @if (isEdit)
+            {
+                <input type="hidden" value="@Item.Id" />
+            }
+
+            <div class="row">
+                <div class="col-6">
+                    <div class="form-floating mb-3">
+                        <InputText id="name" @bind-Value="Item.Name" class="form-control" placeholder="Item Name" />
+                        <label for="name" class="form-label">Name</label>
+                        <small><ValidationMessage For="() => Item.Name" class="text-danger" /></small>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="form-floating mb-3">
+                        <InputSelect class="form-select" @bind-Value="Item.Category">
+                            <option selected disabled>Select Category</option>
+                            @foreach (var item in CategorySD.CategoryDictionary)
+                            {
+                                <option value="@item.Value.Name">@item.Value.Name</option>
+                            }
+                        </InputSelect>
+                        <label>Category</label>
+                    </div>
+                </div>
+            </div>
+            <div class="form-floating mb-3">
+                <InputNumber type="number" id="quantity" @bind-Value="Item.Quantity" class="form-control" placeholder="Quantity" />
+                <label for="quantity" class="form-label">Quantity</label>
+                <small><ValidationMessage For="() => Item.Quantity" class="text-danger" /></small>
+            </div>
+            <div class="form-floating mb-3">
+                <InputTextArea @bind-Value="Item.Description" class="form-control" placeholder="Description" style="height: 200px" />
+                <label class="form-label">Description</label>
+                <small><ValidationMessage For="() => Item.Description" class="text-danger" /></small>
+            </div>
+            <div class="text-center">
+                <Button Type="ButtonType.Submit" Color="ButtonColor.Primary" Class="w-25">@(isEdit ? "Update" : "Submit")</Button>
+            </div>
+        </EditForm>
+    </BodyTemplate>
+    <FooterTemplate>
+        <div class="d-flex w-100">
+            @if (isEdit)
+            {
+                <Button @onclick="OnDelete" Color="ButtonColor.Danger" Outline="true">Remove</Button>
+            }
+            <div class="flex-grow-1" />
+            <Button @onclick="OnHideModal" Color="ButtonColor.Secondary">Close</Button>
+        </div>
+    </FooterTemplate>
 </Modal>
 
 @code {
-private Modal modal = default!;
+    private Modal modal = default!;
 
-[SupplyParameterFromForm]
-private ItemM Item { get; set; } = new();
+    [SupplyParameterFromForm]
+    private ItemUpsertDTO Item { get; set; } = new() { Quantity = 1 };
 
-[Parameter]
-public ItemM SelectedItem { get; set; } = default!;
+    [Parameter]
+    public EventCallback<ItemM> OnUpsertCB { get; set; }
 
-[Parameter]
-public EventCallback<ItemM> EventCallBack { get; set; }
+    [Parameter]
+    public EventCallback OnDeleteCB { get; set; }
 
-protected override void OnParametersSet()
-{
-if (SelectedItem is not null)
-{
-Item = SelectedItem;
-}
-else
-{
-Item = new();
-}
-}
+    private bool isEdit { get; set; } = false;
 
-private async Task OnValidSubmitAsync()
-{
-await EventCallBack.InvokeAsync(Item);
-await OnHideModal();
-}
+    private async Task OnValidSubmitAsync()
+    {
+        ItemM item = new()
+            {
+                Id = Item.Id,
+                Name = Item.Name,
+                Quantity = Item.Quantity,
+                Category = Item.Category,
+                Description = Item.Description,
+                ProjectId = Item.ProjectId
+            };
 
-private async Task OnShowModal() => await modal.ShowAsync();
-private async Task OnHideModal() => await modal.HideAsync();
+        await OnUpsertCB.InvokeAsync(item);
+
+        Item = new() { Quantity = 1 };
+
+        if (isEdit)
+        {
+            await OnHideModal();
+        }
+    }
+
+    private async Task OnDelete()
+    {
+        await OnDeleteCB.InvokeAsync();
+        await OnHideModal();
+    }
+
+    public async Task OnShowModal(ItemM entity = null)
+    {
+        if (entity is not null)
+        {
+            Item.Id = entity.Id;
+            Item.Name = entity.Name;
+            Item.Quantity = entity.Quantity;
+            Item.Category = entity.Category;
+            Item.Description = entity.Description;
+            Item.ProjectId = entity.ProjectId;
+            isEdit = true;
+        }
+        else
+        {
+            Item = new() { Quantity = 1 };
+            isEdit = false;
+        }
+
+        await modal.ShowAsync();
+    }
+    private async Task OnHideModal() => await modal.HideAsync();
 }

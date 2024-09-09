@@ -1,166 +1,355 @@
 ﻿@page "/project/details"
-@using ZingCRM_Demo.Components.Shared.ItemComponents
 
-@rendermode InteractiveServer
+@rendermode @(new InteractiveServerRenderMode(false))
 
 @inject IProjectRepository ProjectRepo
-@inject NavigationManager NavigationManager
+@inject NavigationManager NavManager
 
-<PageTitle>Details</PageTitle>
-<h1>Details</h1>
+@attribute [Authorize]
 
-<div>
+<PageTitle>Project Details</PageTitle>
+<h1 class="text-center fw-bold">PROJECT DETAILS</h1>
 <hr />
 @if (Project is null)
 {
-<p><em>Loading...</em></p>
+    <p><em>Loading...</em></p>
 }
 else
 {
-<div class="row">
-<Card>
-<CardBody>
-<dl class="row">
-<dt class="col-sm-2">ProjectNumber</dt>
-<dd class="col-sm-10">@Project.ProjectNumber</dd>
-<dt class="col-sm-2">Version</dt>
-<dd class="col-sm-10">@Project.Version</dd>
-<dt class="col-sm-2">Name</dt>
-<dd class="col-sm-10">@Project.Name</dd>
-<dt class="col-sm-2">Client</dt>
-<dd class="col-sm-10">@Project.Client</dd>
-<dt class="col-sm-2">Status</dt>
-<dd class="col-sm-10">@Project.Status</dd>
-<dt class="col-sm-2">Date</dt>
-<dd class="col-sm-10">@Project.Date</dd>
-<dt class="col-sm-2">DueDate</dt>
-<dd class="col-sm-10">@Project.DueDate.ToString("dd/MM/yy")</dd>
-<dt class="col-sm-2">InvoiceDate</dt>
-<dd class="col-sm-10">@Project.InvoiceDate.ToString("dd/MM/yy")</dd>
-</dl>
-<div>
-<a href="@($"/project/edit?id={Project.Id}")">Edit</a> |
-<a href="@($"/projects")">Back to List</a>
-</div>
-</CardBody>
-</Card>
-</div>
-<br />
-<div class="row">
-<div class="d-flex justify-content-between align-items-center mb-2">
-<h4 class="m-0">Items</h4>
-@if (Project.Items.Any(p => p.Cost == 0) && Project.Phase.Equals(SD.Phase_Cost) || Project.Items.Any(p => p.Price == 0) && Project.Phase.Equals(SD.Phase_Price))
-{
-<Button Type="ButtonType.Button" Color="ButtonColor.Primary" Disabled="true">Save</Button>
-}
-else
-{
-<Button @onclick="UpdateProject" Type="ButtonType.Button" Color="ButtonColor.Primary">Save</Button>
-}
-</div>
+    <Card Class="shadow-sm">
+        <CardBody>
+            <div class="d-flex justify-content-between align-items-center">
+                <CardTitle Class="fw-bold m-0">INFORMATION</CardTitle>
+                @if (Project.Status.Equals(SD.Status_Pending))
+                {
+                    <Badge Color="BadgeColor.Warning">@Project.Status</Badge>
+                }
+                else
+                {
+                    <Badge Color="@(Project.Status.Equals(SD.Status_Approved) ? BadgeColor.Success : BadgeColor.Danger)">@Project.Status</Badge>
+                }
+            </div>
+            <hr class="mt-2" />
+            <div class="d-flex">
+                <DetailCard Title="AC #" Detail="@Project.ProjectNumber.ToString()"></DetailCard>
+                <div class="mx-2" />
+                <DetailCard Title="PO #" Detail="@Project.PONumber"></DetailCard>
+                <div class="mx-2" />
+                <DetailCard Title="Version" Detail="@Project.Version.ToString()"></DetailCard>
+            </div>
+            <DetailCard Title="Project Name" Detail="@Project.Name"></DetailCard>
+            <DetailCard Title="Client" Detail="@Project.Client"></DetailCard>
+            <div class="d-flex">
+                <DetailCard Title="CS Manager" Detail="@($"{Project.User.FirstName} {Project.User.LastName}")"></DetailCard>
+                <div class="mx-2" />
+                <DetailCard Title="OPS Manager" Detail="@($"{Project.OperationUser.FirstName} {Project.OperationUser.LastName}")"></DetailCard>
+            </div>
+            <div class="d-md-flex">
+                <div class="w-100" />
+                <div class="mx-2" />
+                <DetailCard Title="Date" Detail="@Project.Date.ToString()"></DetailCard>
+            </div>
+            <div class="d-md-flex">
+                <div class="w-100" />
+                <div class="mx-2" />
+                <DetailCard Title="Due Date" Detail="@Project.DueDate.ToString("dd/MM/yy")"></DetailCard>
+            </div>
+            <div class="d-md-flex">
+                <div class="w-100" />
+                <div class="mx-2" />
+                <DetailCard Title="Invoice Date" Detail="@Project.InvoiceDate.ToString("dd/MM/yy")" BottomMargin="false"></DetailCard>
+            </div>
+        </CardBody>
+        <AuthorizeView Roles="@($"{SD.Role_Admin},{SD.Role_ClientService}")">
+            <CardFooter>
+                <div class="row">
+                    <div class="col-6">
+                        <Button Type="ButtonType.Link" To="@($"/project/upsert?id={Project.Id}")" Color="ButtonColor.Warning" Disabled="!Project.CanEdit" Class="px-4">Edit</Button>
+                        <Dropdown Color="DropdownColor.Secondary" Disabled="true">
+                            <DropdownToggleButton>Version</DropdownToggleButton>
+                            <DropdownMenu>
+                                <DropdownItem To="#" Type="DropdownItemType.Link">Action</DropdownItem>
+                                <DropdownItem To="#" Type="DropdownItemType.Link">Another action</DropdownItem>
+                                <DropdownItem To="#" Type="DropdownItemType.Link">Something else here</DropdownItem>
+                            </DropdownMenu>
+                        </Dropdown>
+                    </div>
+                    <div class="col-6 text-end">
+                        @if (Project.Phase.Equals(PhaseSD.GetValue(PhaseSD.PhasesEnum.Priced)))
+                        {
+                            <ProjectConfirmationModel OnUpsertCB="OnProjectApproved" Project="Project"></ProjectConfirmationModel>
+                        }
+                    </div>
+                </div>
+            </CardFooter>
+        </AuthorizeView>
+    </Card>
+    <br />
+    <Card Class="shadow-sm">
+        <CardBody>
+            <CardTitle Class="fw-bold m-0">WORKFLOW STATUS</CardTitle>
+            <hr class="mt-2" />
+            <nav class="d-md-flex breadcrumbs user-select-none">
+                @foreach (var item in PhaseSD.PhaseDictionary)
+                {
+                    var phaseEnum = item.Key; // This is the enum value (PhasesEnum)
+                    var isActive = PhaseSD.IsDone(Project.Phase, phaseEnum);
 
-<Grid @ref="grid"
-  TItem="ItemM"
-  AllowSorting="true"
-  Class="table table-hover table-bordered table-striped"
-  DataProvider="ItemsDataProvider"
-  AllowRowClick="true"
-  OnRowClick="OnRowClick"
-  Responsive="true">
+                    <div class="breadcrumbs-item @(isActive ? "is-active" : "")"><span>@item.Value</span></div>
+                }
+            </nav>
+        </CardBody>
+        <CardFooter>
+            <Button Color="ButtonColor.Warning" @onclick="OnShowOffcanvasClick" Class="px-4">Edit</Button>
+        </CardFooter>
+    </Card>
+    <br />
+    <Card Class="shadow-sm">
+        <CardBody>
+            <div class="d-flex justify-content-between align-items-center">
+                <CardTitle Class="fw-bold m-0">ITEMS</CardTitle>
+                @if (Project.Status.Equals(SD.Status_Pending))
+                {
+                    <Badge Color="BadgeColor.Warning">@Project.Status</Badge>
+                }
+                else
+                {
+                    <Badge Color="@(Project.Status.Equals(SD.Status_Approved) ? BadgeColor.Success : BadgeColor.Danger)">@Project.Status</Badge>
+                }
+            </div>
 
-<GridColumns>
-<GridColumn TItem="ItemM" HeaderText="Item" SortKeySelector="item => item.Name">
-@context.Name
-</GridColumn>
-<GridColumn TItem="ItemM" HeaderText="Quantity" SortKeySelector="item => item.Quantity">
-@context.Quantity
-</GridColumn>
-<GridColumn TItem="ItemM" HeaderText="Price" SortKeySelector="item => item.Price">
-@context.Price
-</GridColumn>
-<GridColumn TItem="ItemM" HeaderText="Cost" SortKeySelector="item => item.Cost">
-@context.Cost
-</GridColumn>
-<GridColumn TItem="ItemM" HeaderText="Total Price" SortKeySelector="item => (item.Price * item.Quantity)">
-@(context.Price * context.Quantity)
-</GridColumn>
-<GridColumn TItem="ItemM" HeaderText="Total Cost" SortKeySelector="item => item.Cost"> 
-@(context.Cost * context.Quantity)
-</GridColumn>
-<GridColumn TItem="ItemM" HeaderText="Margin $">
-@((context.Cost == 0 || context.Price == 0) ? 0 : ((context.Quantity * (context.Price - context.Cost))))
-</GridColumn>
-<GridColumn TItem="ItemM" HeaderText="Margin %">
-@((context.Cost == 0 || context.Price == 0) ? 0 : $"{((context.Quantity * (context.Price - context.Cost)) / (context.Quantity * context.Price)) * 100}%")
-</GridColumn>
-</GridColumns>
-</Grid>
-<UpsertItem @ref="UpsertItem" SelectedItem="SelectedItem" EventCallBack="UpdateItem"></UpsertItem>
-</div>
+            <hr class="mt-2" />
+            <GridItems Data="Project.Items.ToList()"></GridItems>
+            <div class="d-md-flex">
+                <div class="w-100" />
+                <div class="mx-2" />
+                <DetailCard Title="Total Price" Detail="@Project.TotalPrice.ToString("N2")"></DetailCard>
+            </div>
+            <div class="d-md-flex">
+                <div class="w-100" />
+                <div class="mx-2" />
+                <DetailCard Title="Total Cost" Detail="@Project.TotalCost.ToString("N2")"></DetailCard>
+            </div>
+            <div class="d-md-flex">
+                <div class="w-100" />
+                <div class="mx-2" />
+                <DetailCard Title="Margin $" Detail="@((Project.TotalCost == 0 || Project.TotalPrice == 0) ? "" : (Project.TotalPrice - Project.TotalCost).ToString("N2"))"></DetailCard>
+            </div>
+            <div class="d-md-flex">
+                <div class="w-100" />
+                <div class="mx-2" />
+                <DetailCard Title="Margin %" Detail="@((Project.TotalCost == 0 || Project.TotalPrice == 0) ? "" : ((Project.TotalPrice - Project.TotalCost) / Project.TotalPrice * 100).ToString("F2")+"%")" BottomMargin="false"></DetailCard>
+            </div>
+        </CardBody>
+        @if (!PhaseSD.IsDone(Project.Phase, PhaseSD.PhasesEnum.Confirmed))
+        {
+            <CardFooter>
+                <div class="text-end">
+                    @if (Project.Phase.Equals(PhaseSD.GetValue(PhaseSD.PhasesEnum.Created)) || Project.Phase.Equals(PhaseSD.GetValue(PhaseSD.PhasesEnum.Costed)))
+                    {
+                        <CostModel Items="Project.Items.ToList()" OnCostEstimatedCB="UpsertCost"></CostModel>
+                    }
+                    @if (Project.Phase.Equals(PhaseSD.GetValue(PhaseSD.PhasesEnum.Costed)) || Project.Phase.Equals(PhaseSD.GetValue(PhaseSD.PhasesEnum.Priced)))
+                    {
+                        <PriceModel Items="Project.Items.ToList()" OnPriceQuotedCB="UpsertPrice"></PriceModel>
+                    }
+                </div>
+            </CardFooter>
+        }
+    </Card>
+    <br />
+    <Card Class="shadow-sm">
+        <CardBody>
+            <CardTitle Class="fw-bold">PAYMENT REQUESTS</CardTitle>
+            <hr class="mt-2" />
+            <Grid TItem="PaymentRequestM"
+                  AllowSorting="true"
+                  Class="table table-hover table-bordered table-striped"
+                  Data="PaymentRequests"
+                  Responsive="true">
+                <GridColumns>
+                    <GridColumn TItem="PaymentRequestM" HeaderText="Id">
+                        @context.Id
+                    </GridColumn>
+                </GridColumns>
+            </Grid>
+            <div class="d-md-flex">
+                <div class="w-100" />
+                <div class="mx-2" />
+                <DetailCard Title="Total Transferred" Detail=""></DetailCard>
+            </div>
+            <div class="d-md-flex">
+                <div class="w-100" />
+                <div class="mx-2" />
+                <DetailCard Title="Total Requested" Detail=""></DetailCard>
+            </div>
+            <div class="d-md-flex">
+                <div class="w-100" />
+                <div class="mx-2" />
+                <DetailCard Title="Total Remaining" Detail=""></DetailCard>
+            </div>
+            <div class="d-md-flex">
+                <div class="w-100" />
+                <div class="mx-2" />
+                <DetailCard Title="Total Spent" Detail=""></DetailCard>
+            </div>
+            <div class="d-md-flex">
+                <div class="w-100" />
+                <div class="mx-2" />
+                <DetailCard Title="Total Savings" Detail="" BottomMargin="false"></DetailCard>
+            </div>
+        </CardBody>
+        @if (Project.Status.Equals(SD.Status_Approved))
+        {
+            <CardFooter>
+                <div class="text-end">
+                    <Button Color="ButtonColor.Primary">Create Request</Button>
+                </div>
+            </CardFooter>
+        }
+    </Card>
+    <br />
+
+    <Offcanvas @ref="offcanvas"
+               title="Offcanvas">
+        <BodyTemplate>
+            <div>Some text as placeholder. In real life you can have the elements you have chosen. Like, text, images, lists, etc.</div>
+            <div class="form-floating">
+                <InputSelect id="Phase" class="form-select" @bind-Value="Project.Phase">
+                    <option selected disabled>Select Phase</option>
+                    @foreach (var item in PhaseSD.PhaseDictionary.Values)
+                    {
+                        <option>@item</option>
+                    }
+                </InputSelect>
+                <label for="Phase">Phase</label>
+            </div>
+        </BodyTemplate>
+    </Offcanvas>
 }
 
-</div>
 
 @code {
-[Inject] protected PreloadService PreloadService { get; set; } = default!;
-private Grid<ItemM> grid = default!;
-private UpsertItem UpsertItem = default!;
+    [Inject]
+    protected PreloadService PreloadService { get; set; } = default!;
 
-[SupplyParameterFromQuery]
-public int Id { get; set; }
+    private Offcanvas offcanvas = default!;
+    private async Task OnShowOffcanvasClick() => await offcanvas.ShowAsync();
 
-private ProjectM Project;
-private ItemM SelectedItem;
+    [SupplyParameterFromQuery]
+    public int Id { get; set; }
 
-protected override async Task OnInitializedAsync()
-{
-Project = await ProjectRepo.GetAsync(filter: x => x.Id == this.Id, includeProperties: "Items", tracked: false);
+    // Cascading parameter to get the current authentication state
+    [CascadingParameter]
+    private Task<AuthenticationState> authenticationState { get; set; }
 
-if (Project is null)
-{
-NavigationManager.NavigateTo("notfound");
-}
-}
+    private string CurrentUserId;
+    private ProjectM Project;
+    private List<PaymentRequestM> PaymentRequests { get; set; } = new();
 
-private async Task<GridDataProviderResult<ItemM>> ItemsDataProvider(GridDataProviderRequest<ItemM> request)
-{
-PreloadService.Show();
-try
-{
-}
-catch
-{
-// handle exception
-}
-finally
-{
-PreloadService.Hide();
-}
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await authenticationState;
 
-return await Task.FromResult(request.ApplyTo(Project.Items));
-}
+        PreloadService.Show();
+        try
+        {
+            // Adjust the claim type if necessary
+            var roles = authState.User.Claims.Where(c => c.Type == ClaimTypes.Role).Select(c => c.Value).ToList();
+            CurrentUserId = authState.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
-private async Task OnRowClick(GridRowEventArgs<ItemM> args)
-{
-SelectedItem = args.Item;
-// await UpsertItem.OnShowModal();
-}
+            Project = await ProjectRepo.GetAsync(filter: x => x.Id == this.Id, includeProperties: "User,Items,OperationUser");
 
-public async Task UpdateItem(ItemM model)
-{
-await grid.RefreshDataAsync();
-}
+            if (roles.Contains(SD.Role_Admin))
+            {
+                Project.CanEdit = true;
+                Project.CanProgress = true;
+            }
+            else if (roles.Contains(SD.Role_ClientService))
+            {
+                if (Project.UserId == CurrentUserId)
+                {
+                    Project.CanEdit = true;
+                    Project.CanProgress = true;
+                }
+            }
+            else if (roles.Contains(SD.Role_OperationManager))
+            {
+                if (Project.Phase == PhaseSD.PhaseDictionary.FirstOrDefault(f => f.Key == PhaseSD.PhasesEnum.Created).Value)
+                {
+                    Project.CanProgress = true;
+                }
+                else
+                {
+                    Project.CanProgress = false;
+                }
+            }
 
-private async Task UpdateProject()
-{
-if (Project.Phase.Equals(SD.Phase_Cost))
-{
-Project.Phase = SD.Phase_Price;
-}
-else if (Project.Phase.Equals(SD.Phase_Price))
-{
-Project.Phase = SD.Phase_Confirmation;
-}
-await ProjectRepo.UpdateAsync(Project);
-}
+            foreach (var item in Project.Items)
+            {
+                item.TotalCost = item.Cost * item.Quantity;
+                item.TotalPrice = item.Price * item.Quantity;
+            }
+
+            Project.TotalCost = Project.Items.Sum(item => item.TotalCost);
+            Project.TotalPrice = Project.Items.Sum(item => item.TotalPrice);
+
+            if (Project.Items.Any(f => f.Cost <= 0))
+            {
+                Project.Phase = PhaseSD.PhaseDictionary.FirstOrDefault(f => f.Key == PhaseSD.PhasesEnum.Created).Value;
+            }
+            else if (Project.Items.Any(f => f.Price <= 0))
+            {
+                Project.Phase = PhaseSD.PhaseDictionary.FirstOrDefault(f => f.Key == PhaseSD.PhasesEnum.Costed).Value;
+            }
+        }
+        catch
+        {
+            // handle exception
+        }
+        finally
+        {
+            PreloadService.Hide();
+            if (Project is null)
+            {
+                NavManager.NavigateTo("notfound");
+            }
+            else
+            {
+                StateHasChanged();
+            }
+        }
+    }
+
+    private async Task OnProjectApproved(ProjectConfirmationDTO model)
+    {
+        Project.Status = model.Status;
+        Project.PONumber = model.PONumber;
+        Project.DueDate = model.DueDate;
+        Project.InvoiceDate = model.InvoiceDate;
+        Project.Phase = PhaseSD.PhaseDictionary.FirstOrDefault(f => f.Key == PhaseSD.PhasesEnum.Confirmed).Value;
+        await ProjectRepo.UpdateAsync(Project);
+    }
+
+    private async Task UpsertCost(List<ItemM> models)
+    {
+        if (models is not null)
+        {
+            Project.Items = models;
+            Project.Phase = PhaseSD.PhaseDictionary.FirstOrDefault(f => f.Key == PhaseSD.PhasesEnum.Costed).Value;
+            await ProjectRepo.UpdateAsync(Project);
+            StateHasChanged();
+        }
+    }
+    private async Task UpsertPrice(List<ItemM> models)
+    {
+        if (models is not null)
+        {
+            Project.Items = models;
+            Project.Phase = PhaseSD.PhaseDictionary.FirstOrDefault(f => f.Key == PhaseSD.PhasesEnum.Priced).Value;
+
+            await ProjectRepo.UpdateAsync(Project);
+            StateHasChanged();
+        }
+    }
 }

@@ -1,136 +1,165 @@
 ﻿@page "/admin/user"
-@using Microsoft.AspNetCore.Authorization
-@using Microsoft.AspNetCore.Identity
 
-@rendermode InteractiveServer
+@rendermode @(new InteractiveServerRenderMode(false))
 
+@inject IJSRuntime JS
 @inject NavigationManager NavManager
 @inject UserManager<ApplicationUser> _userManager;
+@inject IProjectRepository ProjectRepo
 
 @attribute [Authorize(Roles = SD.Role_Admin)]
 
-<PageTitle>Users Management</PageTitle>
+<PageTitle>User Management</PageTitle>
+<h1 class="text-center fw-bold">USER MANAGEMENT</h1>
+<hr />
+
+@if(User is not null)
+{
+    <Card Class="shadow-sm">
+        <CardBody>
+            <div class="d-flex justify-content-between align-items-center">
+                <CardTitle Class="fw-bold m-0">INFORMATION</CardTitle>
+                @if (User is not null && User.LockoutEnd > DateTime.Now)
+                {
+                    <Badge Color="BadgeColor.Danger">Suspended</Badge>
+                }
+            </div>
+            <hr class="mt-2" />
+            <div class="d-flex">
+                <DetailCard Title="Name" Detail="@($"{User.FirstName} {User.LastName}")"></DetailCard>
+                <div class="mx-2" />
+                <DetailCard Title="Role" Detail="@User.Role"></DetailCard>
+            </div>
+            <div class="d-flex">
+                <DetailCard Title="Email" Detail="@User.Email"></DetailCard>
+                <div class="mx-2" />
+                <DetailCard Title="Phone Namber" Detail="@User.PhoneNumber"></DetailCard>
+            </div>
+            <div class="d-md-flex">
+                <div class="w-100" />
+                <div class="mx-2" />
+                <DetailCard Title="Last Login" Detail="@User.LastLogin.ToString()"></DetailCard>
+            </div>
+            <div class="d-md-flex">
+                <div class="w-100" />
+                <div class="mx-2" />
+                <DetailCard Title="Account Date" Detail="@User.CreatedAt.ToString()"></DetailCard>
+            </div>
+            <div class="d-md-flex">
+                <div class="w-100" />
+                <div class="mx-2" />
+                <DetailCard Title="Lockout End" Detail="@User.LockoutEnd.ToString()"></DetailCard>
+            </div>
+        </CardBody>
+        <CardFooter>
+            <div class="row">
+                <div class="col-md-6">
+                    <Button Type="ButtonType.Link" To="@($"/admin/user/Edit?id={Id}")" Color="ButtonColor.Warning" Class="px-4">Edit</Button>
+                </div>
+                <div class="col-md-6 d-flex justify-content-end">
+                    @if (User.LockoutEnd > DateTime.Now)
+                    {
+                        <ActionConfirmation OnEventCB="Lockout"
+                                            Action="Unlock"
+                                            ButtonColor="ButtonColor.Success"
+                                            DialogTitle="Unlock User"
+                                            DialogMessage1="@($"Are you sure you want to unlock {User.FirstName} {User.LastName}?")"
+                                            DialogMessage2="Do you want to proceed?">
+                        </ActionConfirmation>
+                    }
+                    else
+                    {
+                        <div class="input-group">
+                            <InputSelect class="form-select" @bind-Value="LockoutPeriod">
+                                <option selected disabled>Select Period</option>
+                                <option value="@SD.LockoutPeriod_FiveMinutes">@SD.LockoutPeriod_FiveMinutes</option>
+                                <option value="@SD.LockoutPeriod_HalfHour">@SD.LockoutPeriod_HalfHour</option>
+                                <option value="@SD.LockoutPeriod_OneHour">@SD.LockoutPeriod_OneHour</option>
+                                <option value="@SD.LockoutPeriod_OneDay">@SD.LockoutPeriod_OneDay</option>
+                                <option value="@SD.LockoutPeriod_OneWeek">@SD.LockoutPeriod_OneWeek</option>
+                                <option value="@SD.LockoutPeriod_OneMonth">@SD.LockoutPeriod_OneMonth</option>
+                            </InputSelect>
+                            <ActionConfirmation OnEventCB="Lockout"
+                                                Disable="@(string.IsNullOrEmpty(LockoutPeriod))"
+                                                Action="Lockout"
+                                                DialogTitle="Lockout User"
+                                                DialogMessage1="@($"Are you sure you want to lockout {User.FirstName} {User.LastName} for {LockoutPeriod}?")"
+                                                DialogMessage2="Do you want to proceed?">
+                            </ActionConfirmation>
+                        </div>
+                    }
+                </div>
+            </div>
+        </CardFooter>
+    </Card>
+    <br />
+}
+<Card Class="shadow-sm">
+    <CardBody>
+        <CardTitle Class="fw-bold m-0">PROJECTS</CardTitle>
+        <hr class="mt-2" />
+        <GridProjects Data="Projects"></GridProjects>
+    </CardBody>
+</Card>
 <br />
-<h2 class="border-bottom">USER MANAGEMENT</h2>
-<div class="mb-2">
-    <Button Type="ButtonType.Link" To="" Color="ButtonColor.Warning">Edit</Button>
-    <ActionConfirmation DeleteCallBack="DeleteUser"
-                        DialogTitle="Are you sure you want to delete this User?"
-                        DialogMessage1="Do you want to proceed?">
-    </ActionConfirmation>
-    <ActionConfirmation DeleteCallBack="UnLockUser" Disable="User.LockoutEnd > DateTime.Now"
-                        Action="Unlock" ButtonColor="ButtonColor.Success"
-                        DialogTitle="Are you sure you want to unlock this User?"
-                        DialogMessage1="Do you want to proceed?">
-    </ActionConfirmation>
-    <div class="mx-1"></div>
-    <div class="input-group">
-        <ActionConfirmation DeleteCallBack="LockUser"
-                            Action="Lockout" ButtonColor="ButtonColor.Danger"
-                            DialogTitle="Are you sure you want to lockout this User?"
-                            DialogMessage1="Do you want to proceed?">
-        </ActionConfirmation>
-        <InputSelect @bind-Value="lockoutPeriod" class="form-control">
-            @foreach (var period in Enum.GetValues(typeof(LockoutPeriod)).Cast<LockoutPeriod>())
-            {
-                <option value="@period">@period</option>
-            }
-        </InputSelect>
-    </div>
-</div>
-<div class="row">
-    <div class="col-6">
-        <Card>
-            <CardBody>
-                <CardTitle>Information</CardTitle>
-                <CardText>Name: @($"{User.FirstName} {User.LastName}")</CardText>
-                <CardText>Email: @User.Email</CardText>
-                <CardText>Role: @User.Role</CardText>
-                <CardText>Last Login: @User.LastLogin</CardText>
-                <CardText>Created Date: @User.CreatedAt</CardText>
-            </CardBody>
-        </Card>
-    </div>
-    <div class="col-6">
-        <Card>
-            <CardBody>
-                <CardTitle>Information</CardTitle>
-                <CardText>Name: @($"{User.FirstName} {User.LastName}")</CardText>
-                <CardText>Email: @User.Email</CardText>
-                <CardText>Role: @User.Role</CardText>
-                <CardText>Last Login: @User.LastLogin</CardText>
-                <CardText>Created Date: @User.CreatedAt</CardText>
-            </CardBody>
-        </Card>
-    </div>
-</div>
-<br />
-<div class="row">
-    <h2>Projects</h2>
-</div>
 
 @code {
     [SupplyParameterFromQuery]
     public string Id { get; set; }
 
     private ApplicationUser User { get; set; }
-    private LockoutPeriod lockoutPeriod = LockoutPeriod.HalfHour;
+    private List<ProjectM> Projects { get; set; }
+    private string LockoutPeriod { get; set; }
 
-    // Define the LockoutPeriod enum
-    public enum LockoutPeriod
-    {
-        FiveMinutes,
-        HalfHour,
-        OneHour,
-        OneDay,
-        OneWeek,
-        OneMonth
-    }
-
-    protected override void OnParametersSet()
+    protected override async Task OnParametersSetAsync()
     {
         User = _userManager.Users.FirstOrDefault(p => p.Id.Equals(Id));
-    }
 
-    // Method to lock selected users by setting their lockout end date to 5 minutes from now
-    private async Task LockUser()
-    {
-        DateTime lockoutEndDate = DateTime.Now;
-
-        switch (lockoutPeriod)
+        if (User is not null)
         {
-            case LockoutPeriod.FiveMinutes:
-                lockoutEndDate = lockoutEndDate.AddMinutes(5);
-                break;
-            case LockoutPeriod.HalfHour:
-                lockoutEndDate = lockoutEndDate.AddMinutes(30);
-                break;
-            case LockoutPeriod.OneHour:
-                lockoutEndDate = lockoutEndDate.AddHours(1);
-                break;
-            case LockoutPeriod.OneDay:
-                lockoutEndDate = lockoutEndDate.AddDays(1);
-                break;
-            case LockoutPeriod.OneWeek:
-                lockoutEndDate = lockoutEndDate.AddDays(7);
-                break;
-            case LockoutPeriod.OneMonth:
-                lockoutEndDate = lockoutEndDate.AddDays(30);
-                break;
+            var roles = await _userManager.GetRolesAsync(User);
+            User.Role = string.Join(",", roles);
+
+            Projects = await ProjectRepo.GetAllAsync(filter: f => f.UserId.Equals(User.Id), includeProperties: "User,OperationUser") ?? new();
         }
-
-        await _userManager.SetLockoutEndDateAsync(User, lockoutEndDate);
     }
 
-    // Method to unlock selected users by setting their lockout end date to now
-    private async Task DeleteUser()
+    private async Task Lockout()
     {
-        var res = await _userManager.DeleteAsync(User);
-    }
+        if (User.LockoutEnd > DateTime.Now)
+        {
+            await _userManager.SetLockoutEndDateAsync(User, null);
+        }
+        else
+        {
+            var LockoutDete = DateTime.Now;
+            switch (LockoutPeriod)
+            {
+                case SD.LockoutPeriod_FiveMinutes:
+                    LockoutDete = LockoutDete.AddMinutes(5);
+                    break;
+                case SD.LockoutPeriod_HalfHour:
+                    LockoutDete = LockoutDete.AddMinutes(30);
+                    break;
+                case SD.LockoutPeriod_OneHour:
+                    LockoutDete = LockoutDete.AddHours(1);
+                    break;
+                case SD.LockoutPeriod_OneDay:
+                    LockoutDete = LockoutDete.AddDays(1);
+                    break;
+                case SD.LockoutPeriod_OneWeek:
+                    LockoutDete = LockoutDete.AddDays(7);
+                    break;
+                case SD.LockoutPeriod_OneMonth:
+                    LockoutDete = LockoutDete.AddDays(30);
+                    break;
+                default:
+                    LockoutDete = DateTime.Now;
+                    break;
+            }
 
-    // Method to unlock selected users by setting their lockout end date to now
-    private async Task UnLockUser()
-    {
+            await _userManager.SetLockoutEndDateAsync(User, LockoutDete);
+        }
     }
 
     private string TimeSinceDate(DateTime? date)

@@ -55,13 +55,14 @@ namespace ZingCRM_Demo.Data.DbInitializer
 
             ApplicationUser adminUser = new ApplicationUser()
             {
+                FirstName= "Admin",
                 UserName = "admin@admin",
                 Email = "admin@admin",
                 CreatedAt = DateTime.Now,
                 LockoutEnabled = false,
             };
 
-            var result = _userManager.CreateAsync(adminUser, "Admin121!").GetAwaiter().GetResult();
+            var result = await _userManager.CreateAsync(adminUser, "Admin121!");
 
             if (!result.Succeeded)
             {
